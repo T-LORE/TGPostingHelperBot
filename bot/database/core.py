@@ -17,6 +17,7 @@ async def start_db():
                 file_id TEXT NOT NULL,
                 caption TEXT,
                 media_type TEXT DEFAULT 'photo',
+                publish_date TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)

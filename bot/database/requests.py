@@ -1,4 +1,7 @@
 import aiosqlite
+import sqlite3
+import datetime
+
 from bot.misc.env_config_reader import settings
 
 async def is_admin(user_id: int) -> bool:
@@ -8,3 +11,12 @@ async def is_admin(user_id: int) -> bool:
             (user_id,)
         ) as cursor:
             return await cursor.fetchone() is not None
+        
+async def add_to_queue(file_id: str, caption: str, media_type: str, publish_date: datetime):
+    async with aiosqlite.connect(settings.database_path,
+                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        await db.execute(
+            "INSERT INTO queue (file_id, caption, media_type, publish_date) VALUES (?, ?, ?, ?)", 
+            (file_id, caption, media_type, publish_date)
+        )
+        await db.commit()
