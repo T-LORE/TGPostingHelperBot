@@ -14,8 +14,8 @@ async def start_bot():
     dp = Dispatcher()
 
     await start_db()
-    
-    dp.include_routers(user.router, admin.router)
+
+    dp.include_routers(admin.router, user.router)
     
     await bot.delete_webhook(drop_pending_updates=True) # Do not answer to old messages that were sent when the bot was disabled
 

@@ -6,6 +6,6 @@ from bot.filters.admin import IsAdmin
 router = Router()
 router.message.filter(IsAdmin())
 
-@router.message(Command("admin"))
+@router.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer("Hello world, Admin!")
