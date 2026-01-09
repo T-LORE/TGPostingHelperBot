@@ -4,6 +4,7 @@ import logging
 
 from bot.misc import env_config_reader
 from bot.handlers import user, admin
+from bot.database import start_db
 
 
 async def start_bot():
@@ -12,6 +13,8 @@ async def start_bot():
     bot = Bot(token=env_config_reader.settings.bot_token.get_secret_value())
     dp = Dispatcher()
 
+    await start_db()
+    
     dp.include_routers(user.router, admin.router)
     
     await bot.delete_webhook(drop_pending_updates=True) # Do not answer to old messages that were sent when the bot was disabled
