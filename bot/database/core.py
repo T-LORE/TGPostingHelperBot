@@ -27,4 +27,9 @@ async def start_db():
             )
         """)
         
+        await db.execute(
+            "INSERT OR IGNORE INTO admins (user_id) VALUES (?);",
+            (settings.root_admin_id,)
+        )
+
         await db.commit()
