@@ -8,6 +8,7 @@ from bot.filters.admin import IsAdmin
 from bot.middlewares.album import AlbumMiddleware
 from bot.database.requests import add_to_queue
 from bot.misc.env_config_reader import settings
+from bot.misc.util import get_next_posts_datetime
 
 router = Router()
 router.message.filter(IsAdmin())
@@ -21,8 +22,10 @@ async def cmd_start(message: Message):
 async def handle_media_content(message: Message, album: list[Message] = None):
     files_to_process = album if album else [message]
     added_count = 0
-    
-    for msg in files_to_process:
+
+    dates_list = await get_next_posts_datetime(len(files_to_process))
+
+    for msg, publish_date in zip(files_to_process, dates_list):
         file_id = None
         media_type = 'photo'
         
@@ -37,7 +40,7 @@ async def handle_media_content(message: Message, album: list[Message] = None):
             media_type = 'animation'
             
         if file_id:
-            await add_to_queue(file_id=file_id, caption=settings.post_caption, media_type=media_type, publish_date=datetime.datetime.now())
+            await add_to_queue(file_id=file_id, caption=settings.post_caption, media_type=media_type, publish_date=publish_date)
             added_count += 1
 
     await message.reply(f"✅ Добавлено {added_count} медиафайлов в очередь!")

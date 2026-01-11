@@ -20,3 +20,14 @@ async def add_to_queue(file_id: str, caption: str, media_type: str, publish_date
             (file_id, caption, media_type, publish_date)
         )
         await db.commit()
+
+async def get_latest_post():
+     async with aiosqlite.connect(settings.database_path,
+                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        db.row_factory = sqlite3.Row
+
+        async with db.execute(
+            "SELECT * FROM queue ORDER BY publish_date DESC LIMIT 1"
+        ) as cursor:
+            post = await cursor.fetchone()
+            return post

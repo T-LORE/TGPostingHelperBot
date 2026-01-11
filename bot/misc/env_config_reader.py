@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     database_path: str
     root_admin_id: int
     post_caption: str
+    post_timestamps: str
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
 settings = Settings()
