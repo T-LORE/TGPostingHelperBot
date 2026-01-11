@@ -7,6 +7,7 @@ from aiogram.filters.command import Command
 from bot.filters.admin import IsAdmin
 from bot.middlewares.album import AlbumMiddleware
 from bot.database.requests import add_to_queue
+from bot.misc.env_config_reader import settings
 
 router = Router()
 router.message.filter(IsAdmin())
@@ -36,7 +37,7 @@ async def handle_media_content(message: Message, album: list[Message] = None):
             media_type = 'animation'
             
         if file_id:
-            await add_to_queue(file_id=file_id, caption="custom caption", media_type=media_type, publish_date=datetime.datetime.now())
+            await add_to_queue(file_id=file_id, caption=settings.post_caption, media_type=media_type, publish_date=datetime.datetime.now())
             added_count += 1
 
     await message.reply(f"✅ Добавлено {added_count} медиафайлов в очередь!")
