@@ -34,5 +34,9 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
         text="Удалить всё",
         callback_data=AdminCB.DELETE_ALL_CONFIRM
     ))
+    builder.add(InlineKeyboardButton(
+        text="Просмотр постов",
+        callback_data=AdminCB.POST_QUEUE
+    ))
     
     return message_text, builder.as_markup()
