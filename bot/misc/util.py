@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta, time
 
-from bot.database.requests import get_latest_post
+from bot.database.requests import get_latest_posts
 from bot.misc.env_config_reader import settings
 
 def create_file_if_not_exist(path):
@@ -19,8 +19,12 @@ def create_file_if_not_exist(path):
     return True
 
 async def get_next_posts_datetime(posts_amount: int):
-    post = await get_latest_post()
-    latest_date = datetime.now() if post is None else post["publish_date"]
+    posts = await get_latest_posts(start_post=0, posts_amount=1)
+    if posts is None or len(posts) == 0:
+        latest_date = datetime.now()
+    else:
+        post = posts[0]
+        latest_date = datetime.now() if post is None else post["publish_date"]
     result_dates = []
 
     for _ in range(posts_amount):
