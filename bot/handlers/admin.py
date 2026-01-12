@@ -9,11 +9,9 @@ from aiogram.exceptions import TelegramBadRequest
 
 from bot.filters.admin import IsAdmin
 from bot.middlewares.album import AlbumMiddleware
-from bot.database.requests import add_to_queue
-from bot.misc.env_config_reader import settings
-from bot.misc.util import get_next_posts_datetime
 import bot.windows.admin as window
 import bot.services.admin as service
+from bot.misc.callbacks import AdminCB
 
 router = Router()
 router.message.filter(IsAdmin())
@@ -32,7 +30,7 @@ async def cmd_start(message: Message, state: FSMContext):
 
     await state.set_state(AdminPanel.main_page)
 
-@router.callback_query(F.data == "update_main_page")
+@router.callback_query(F.data == AdminCB.UPDATE)
 async def update_main_page(callback: CallbackQuery):
     message_text, reply_markup = await window.get_main_menu_window()
         
@@ -41,7 +39,7 @@ async def update_main_page(callback: CallbackQuery):
     
     await callback.answer()
 
-@router.callback_query(F.data == "delete_all_posts_confirmation")
+@router.callback_query(F.data == AdminCB.DELETE_ALL_CONFIRM)
 async def delete_all_posts_confirmation(callback: CallbackQuery, state: FSMContext):
     message_text, reply_markup = await window.get_delete_all_posts_confirmation()
     
@@ -54,7 +52,8 @@ async def delete_all_posts_confirmation(callback: CallbackQuery, state: FSMConte
 
 @router.callback_query(
         AdminPanel.delete_posts_confirmation,
-        F.data == "delete_all_posts")
+        F.data == AdminCB.DELETE_ALL
+        )
 async def delete_all_posts(callback: CallbackQuery, state: FSMContext):
     await service.delete_all_posts_from_queue()
     message_text, reply_markup = await window.get_main_menu_window()
@@ -84,19 +83,19 @@ async def unknown_command(message: Message):
     await message.reply(message_text,
     reply_markup=reply_markup)
 
-@router.callback_query(F.data == "return_to_main_page")
-@router.callback_query(F.data == "return_to_main_page_with_edit")
-@router.callback_query(F.data == "return_to_main_page_with_delete")
+@router.callback_query(F.data == AdminCB.RETURN_MAIN)
+@router.callback_query(F.data == AdminCB.RETURN_MAIN_EDIT)
+@router.callback_query(F.data == AdminCB.RETURN_MAIN_DELETE)
 async def return_to_main_page(callback: CallbackQuery, state: FSMContext):
     message_text, reply_markup = await window.get_main_menu_window()
 
-    if callback.data == "return_to_main_page_with_edit":
+    if callback.data == AdminCB.RETURN_MAIN_EDIT:
         with suppress(TelegramBadRequest):
             await callback.message.edit_text(message_text, reply_markup=reply_markup)
-    elif callback.data == "return_to_main_page_with_delete":
+    elif callback.data == AdminCB.RETURN_MAIN_DELETE:
         await callback.message.delete()
         await callback.message.answer(message_text, reply_markup=reply_markup)
-    elif callback.data == "return_to_main_page":
+    elif callback.data == AdminCB.RETURN_MAIN:
         await callback.message.answer(message_text, reply_markup=reply_markup)
         
     await state.set_state(AdminPanel.main_page)

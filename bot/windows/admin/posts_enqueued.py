@@ -1,5 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from bot.misc.callbacks import AdminCB
 
 async def get_message_enqueue_answer(added_posts_id: list[int]) -> tuple[str, InlineKeyboardMarkup]:
     added_count = len(added_posts_id)
@@ -14,7 +15,7 @@ async def get_message_enqueue_answer(added_posts_id: list[int]) -> tuple[str, In
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(
         text="Показать главную страницу",
-        callback_data="return_to_main_page"
+        callback_data=AdminCB.RETURN_MAIN
     ))
     
     return message_text, builder.as_markup()
