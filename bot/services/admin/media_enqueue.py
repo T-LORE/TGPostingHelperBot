@@ -4,15 +4,15 @@ from bot.misc.env_config_reader import settings
 from bot.misc.util import get_next_posts_datetime
 from bot.database.requests import add_to_queue
 
-async def enqueue_messages_media(mesages_list: list[Message]):
+async def enqueue_messages_media(messages_list: list[Message]):
     response = {
         "added_count": 0,
         "posts_id": []
     }
 
-    dates_list = await get_next_posts_datetime(len(mesages_list))
+    dates_list = await get_next_posts_datetime(len(messages_list))
 
-    for msg, publish_date in zip(mesages_list, dates_list):
+    for msg, publish_date in zip(messages_list, dates_list):
         file_id = None
         media_type = 'photo'
         

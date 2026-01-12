@@ -54,7 +54,7 @@ async def handle_media_content(message: Message, album: list[Message] = None):
 
 @router.message()
 async def unknown_command(message: Message):
-    message_text, reply_markup = await window.get_unknown_comman_window()
+    message_text, reply_markup = await window.get_unknown_command_window()
     await message.reply(message_text,
     reply_markup=reply_markup)
 

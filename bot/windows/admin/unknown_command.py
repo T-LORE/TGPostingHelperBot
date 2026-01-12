@@ -1,7 +1,7 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-async def get_unknown_comman_window() -> tuple[str, InlineKeyboardMarkup]:
+async def get_unknown_command_window() -> tuple[str, InlineKeyboardMarkup]:
     message_text = (f"""
     Неизвестая команда!"""
     )
