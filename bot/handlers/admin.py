@@ -2,11 +2,13 @@ import datetime
 
 from aiogram import Router, F
 from aiogram.types import Message
-from aiogram.filters.command import Command
+from aiogram.filters import Command, StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
 
 from bot.filters.admin import IsAdmin
 from bot.middlewares.album import AlbumMiddleware
-from bot.database.requests import add_to_queue
+from bot.database.requests import add_to_queue, get_queue_count, get_earliest_post
 from bot.misc.env_config_reader import settings
 from bot.misc.util import get_next_posts_datetime
 
@@ -14,11 +16,30 @@ router = Router()
 router.message.filter(IsAdmin())
 router.message.middleware(AlbumMiddleware(latency=0.5))
 
-@router.message(Command("start"))
-async def cmd_start(message: Message):
-    await message.answer("Hello world, Admin!")
+class AdminPanel(StatesGroup):
+    main_page = State()
 
-@router.message(F.photo | F.video | F.animation)
+@router.message(Command("start"))
+async def cmd_start(message: Message, state: FSMContext):
+    await message.answer(f"""
+    📱 ГЛАВНОЕ МЕНЮ / СТАТИСТИКА
+    -------------------
+    Админ: user_id - role_id
+    Управляемая группа: group_id
+                         
+    В очереди: {await get_queue_count()} поста
+    След. пост: {(await get_earliest_post())["publish_date"]}
+
+    Всего сделано постов: metrics_post_count
+    Постов отменено: metrics_post_canceled
+    -------------------
+    (Жду файлы для загрузки...)""")
+    await state.set_state(AdminPanel.main_page)
+
+@router.message(
+        AdminPanel.main_page,
+        F.photo | F.video | F.animation
+        )
 async def handle_media_content(message: Message, album: list[Message] = None):
     files_to_process = album if album else [message]
     added_count = 0

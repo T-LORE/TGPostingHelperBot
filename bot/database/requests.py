@@ -21,13 +21,33 @@ async def add_to_queue(file_id: str, caption: str, media_type: str, publish_date
         )
         await db.commit()
 
+async def get_queue_count():
+    async with aiosqlite.connect(settings.database_path,
+                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM queue"
+        ) as cursor:
+            count = await cursor.fetchone()
+            return count[0]
+
 async def get_latest_post():
-     async with aiosqlite.connect(settings.database_path,
+    async with aiosqlite.connect(settings.database_path,
                                  detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
         db.row_factory = sqlite3.Row
 
         async with db.execute(
             "SELECT * FROM queue ORDER BY publish_date DESC LIMIT 1"
+        ) as cursor:
+            post = await cursor.fetchone()
+            return post
+        
+async def get_earliest_post():
+    async with aiosqlite.connect(settings.database_path,
+                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        db.row_factory = sqlite3.Row
+
+        async with db.execute(
+            "SELECT * FROM queue ORDER BY publish_date ASC LIMIT 1"
         ) as cursor:
             post = await cursor.fetchone()
             return post
