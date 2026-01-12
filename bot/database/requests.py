@@ -64,3 +64,10 @@ async def delete_all_posts():
         await db.execute("DELETE FROM queue")
 
         await db.commit()
+
+async def delete_post(post_id: int):
+    async with aiosqlite.connect(settings.database_path,
+                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        await db.execute("DELETE FROM queue WHERE id = ?", (post_id,))
+
+        await db.commit()

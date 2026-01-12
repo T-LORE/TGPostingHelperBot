@@ -2,7 +2,7 @@ import textwrap
 
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from bot.misc.callbacks import AdminCB, NavigationCB
+from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB
 
 from bot.database.requests import get_queue_count, get_earliest_posts
 
@@ -37,20 +37,37 @@ async def get_post_queue_window(page_number: int) -> tuple[str, InlineKeyboardMa
 
 
     builder = InlineKeyboardBuilder()
-    if page_number > 1:
-        builder.add(InlineKeyboardButton(
+
+    buttons_row = []
+    for index, post in enumerate(posts_queue, start=1):
+        btn = InlineKeyboardButton(
+            text=f"🗑 {index}",
+            callback_data=DeletePostCB(id=post['id'], page=page_number).pack()
+        )
+        buttons_row.append(btn)
+
+    builder.row(*buttons_row, width=5)
+    
+    page_nav_row = []
+    next_page_btn = InlineKeyboardButton(
             text="⬅️",
             callback_data=NavigationCB(page=page_number - 1).pack()
-        ))
-    builder.add(InlineKeyboardButton(
-        text="В меню",
-        callback_data=AdminCB.RETURN_MAIN_EDIT
-    ))
-    if page_number < page_count:
-        builder.add(InlineKeyboardButton(
+        )
+    previous_page_btn = InlineKeyboardButton(
             text="➡️",
             callback_data=NavigationCB(page=page_number + 1).pack()
-        ))
+        )
+    menu_btn = InlineKeyboardButton(
+        text="В меню",
+        callback_data=AdminCB.RETURN_MAIN_EDIT
+    )
+    if page_number > 1:
+        page_nav_row.append(next_page_btn)
+    if page_number < page_count:
+        page_nav_row.append(previous_page_btn)
+
+    builder.row(*page_nav_row)
+    builder.row(*[menu_btn])
     
     return message_text, builder.as_markup()
 

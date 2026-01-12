@@ -11,7 +11,7 @@ from bot.filters.admin import IsAdmin
 from bot.middlewares.album import AlbumMiddleware
 import bot.windows.admin as window
 import bot.services.admin as service
-from bot.misc.callbacks import AdminCB, NavigationCB
+from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB
 
 router = Router()
 router.message.filter(IsAdmin())
@@ -89,6 +89,20 @@ async def post_queue_navigation(callback: CallbackQuery, callback_data: Navigati
         await callback.message.edit_text(message_text, reply_markup=reply_markup)
     
     await callback.answer()
+
+@router.callback_query(AdminPanel.post_queue_page, DeletePostCB.filter())
+async def delete_post_btn_clicked(callback: CallbackQuery, callback_data: DeletePostCB):
+    post_id = callback_data.id
+    current_page = callback_data.page
+
+    await service.delete_post(post_id)
+    
+    message_text, reply_markup = await window.get_post_queue_window(current_page)
+
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(message_text, reply_markup=reply_markup)
+    
+    await callback.answer("Пост удален")
 
 @router.message(
         AdminPanel.main_page,

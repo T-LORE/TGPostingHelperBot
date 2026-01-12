@@ -13,3 +13,7 @@ class AdminCB:
 
 class NavigationCB(CallbackData, prefix="nav"):
     page: int
+
+class DeletePostCB(CallbackData, prefix="delpost"):
+    id: int     
+    page: int
