@@ -1,3 +1,4 @@
 from .main_page import get_main_menu_window
 from .unknown_command import get_unknown_command_window
 from .posts_enqueued import get_message_enqueue_answer
+from .delete_all_posts_confirmation import get_delete_all_posts_confirmation

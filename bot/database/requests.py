@@ -55,3 +55,10 @@ async def get_earliest_post():
         ) as cursor:
             post = await cursor.fetchone()
             return post
+
+async def delete_all_posts():
+    async with aiosqlite.connect(settings.database_path,
+                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        await db.execute("DELETE FROM queue")
+
+        await db.commit()

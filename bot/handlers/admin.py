@@ -21,6 +21,7 @@ router.message.middleware(AlbumMiddleware(latency=0.5))
 
 class AdminPanel(StatesGroup):
     main_page = State()
+    delete_posts_confirmation = State()
 
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
@@ -39,6 +40,31 @@ async def update_main_page(callback: CallbackQuery):
         await callback.message.edit_text(message_text, reply_markup=reply_markup)
     
     await callback.answer()
+
+@router.callback_query(F.data == "delete_all_posts_confirmation")
+async def delete_all_posts_confirmation(callback: CallbackQuery, state: FSMContext):
+    message_text, reply_markup = await window.get_delete_all_posts_confirmation()
+    
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(message_text, reply_markup=reply_markup)
+    
+    await state.set_state(AdminPanel.delete_posts_confirmation)
+
+    await callback.answer()
+
+@router.callback_query(
+        AdminPanel.delete_posts_confirmation,
+        F.data == "delete_all_posts")
+async def delete_all_posts(callback: CallbackQuery, state: FSMContext):
+    await service.delete_all_posts_from_queue()
+    message_text, reply_markup = await window.get_main_menu_window()
+    
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(message_text, reply_markup=reply_markup)
+
+    await state.set_state(AdminPanel.main_page)
+    
+    await callback.answer("Все посты были удалены!", show_alert=True)
 
 @router.message(
         AdminPanel.main_page,
@@ -59,11 +85,20 @@ async def unknown_command(message: Message):
     reply_markup=reply_markup)
 
 @router.callback_query(F.data == "return_to_main_page")
-async def update_main_page(callback: CallbackQuery, state: FSMContext):
+@router.callback_query(F.data == "return_to_main_page_with_edit")
+@router.callback_query(F.data == "return_to_main_page_with_delete")
+async def return_to_main_page(callback: CallbackQuery, state: FSMContext):
     message_text, reply_markup = await window.get_main_menu_window()
 
-    await callback.message.answer(message_text, reply_markup=reply_markup)
-
+    if callback.data == "return_to_main_page_with_edit":
+        with suppress(TelegramBadRequest):
+            await callback.message.edit_text(message_text, reply_markup=reply_markup)
+    elif callback.data == "return_to_main_page_with_delete":
+        await callback.message.delete()
+        await callback.message.answer(message_text, reply_markup=reply_markup)
+    elif callback.data == "return_to_main_page":
+        await callback.message.answer(message_text, reply_markup=reply_markup)
+        
     await state.set_state(AdminPanel.main_page)
 
     await callback.answer()

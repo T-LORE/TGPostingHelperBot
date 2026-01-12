@@ -30,5 +30,9 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
         text="🔄 Обновить",
         callback_data="update_main_page"
     ))
+    builder.add(InlineKeyboardButton(
+        text="Удалить всё",
+        callback_data="delete_all_posts_confirmation"
+    ))
     
     return message_text, builder.as_markup()
