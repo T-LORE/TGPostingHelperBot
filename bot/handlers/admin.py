@@ -1,16 +1,18 @@
-import datetime
+from contextlib import suppress
 
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
+from aiogram.exceptions import TelegramBadRequest
 
 from bot.filters.admin import IsAdmin
 from bot.middlewares.album import AlbumMiddleware
-from bot.database.requests import add_to_queue, get_queue_count, get_earliest_post
+from bot.database.requests import add_to_queue
 from bot.misc.env_config_reader import settings
 from bot.misc.util import get_next_posts_datetime
+from bot.windows.admin import *
 
 router = Router()
 router.message.filter(IsAdmin())
@@ -21,20 +23,21 @@ class AdminPanel(StatesGroup):
 
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
-    await message.answer(f"""
-    📱 ГЛАВНОЕ МЕНЮ / СТАТИСТИКА
-    -------------------
-    Админ: user_id - role_id
-    Управляемая группа: group_id
-                         
-    В очереди: {await get_queue_count()} поста
-    След. пост: {(await get_earliest_post())["publish_date"]}
+    message_text, reply_markup = await get_main_menu_window()
+    
+    await message.answer(message_text,
+    reply_markup=reply_markup)
 
-    Всего сделано постов: metrics_post_count
-    Постов отменено: metrics_post_canceled
-    -------------------
-    (Жду файлы для загрузки...)""")
     await state.set_state(AdminPanel.main_page)
+
+@router.callback_query(F.data == "update_main_page")
+async def update_main_page(callback: CallbackQuery):
+    message_text, reply_markup = await get_main_menu_window()
+        
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(message_text, reply_markup=reply_markup)
+    
+    await callback.answer()
 
 @router.message(
         AdminPanel.main_page,
@@ -67,5 +70,17 @@ async def handle_media_content(message: Message, album: list[Message] = None):
     await message.reply(f"✅ Добавлено {added_count} медиафайлов в очередь!")
 
 @router.message()
-async def echo_gif(message: Message):
-    await message.reply("Сообщение не обработано!")
+async def unknown_command(message: Message):
+    message_text, reply_markup = await get_unknown_comman_window()
+    await message.reply(message_text,
+    reply_markup=reply_markup)
+
+@router.callback_query(F.data == "return_to_main_page")
+async def update_main_page(callback: CallbackQuery):
+    message_text, reply_markup = await get_main_menu_window()
+
+    await callback.message.answer(message_text, reply_markup=reply_markup)
+    
+    await callback.message.delete()
+    
+    await callback.answer()
