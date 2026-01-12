@@ -12,7 +12,8 @@ from bot.middlewares.album import AlbumMiddleware
 from bot.database.requests import add_to_queue
 from bot.misc.env_config_reader import settings
 from bot.misc.util import get_next_posts_datetime
-from bot.windows.admin import *
+import bot.windows.admin as window
+import bot.services.admin as service
 
 router = Router()
 router.message.filter(IsAdmin())
@@ -23,7 +24,7 @@ class AdminPanel(StatesGroup):
 
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
-    message_text, reply_markup = await get_main_menu_window()
+    message_text, reply_markup = await window.get_main_menu_window()
     
     await message.answer(message_text,
     reply_markup=reply_markup)
@@ -32,7 +33,7 @@ async def cmd_start(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "update_main_page")
 async def update_main_page(callback: CallbackQuery):
-    message_text, reply_markup = await get_main_menu_window()
+    message_text, reply_markup = await window.get_main_menu_window()
         
     with suppress(TelegramBadRequest):
         await callback.message.edit_text(message_text, reply_markup=reply_markup)
@@ -45,42 +46,24 @@ async def update_main_page(callback: CallbackQuery):
         )
 async def handle_media_content(message: Message, album: list[Message] = None):
     files_to_process = album if album else [message]
-    added_count = 0
+    response = await service.enqueue_messages_media(files_to_process)
 
-    dates_list = await get_next_posts_datetime(len(files_to_process))
+    message_text, reply_markup  = await window.get_message_enqueue_answer(response["posts_id"])
 
-    for msg, publish_date in zip(files_to_process, dates_list):
-        file_id = None
-        media_type = 'photo'
-        
-        if msg.photo:
-            file_id = msg.photo[-1].file_id
-            media_type = 'photo'
-        elif msg.video:
-            file_id = msg.video.file_id
-            media_type = 'video'
-        elif msg.animation:
-            file_id = msg.animation.file_id
-            media_type = 'animation'
-            
-        if file_id:
-            await add_to_queue(file_id=file_id, caption=settings.post_caption, media_type=media_type, publish_date=publish_date)
-            added_count += 1
-
-    await message.reply(f"✅ Добавлено {added_count} медиафайлов в очередь!")
+    await message.reply(message_text, reply_markup=reply_markup)
 
 @router.message()
 async def unknown_command(message: Message):
-    message_text, reply_markup = await get_unknown_comman_window()
+    message_text, reply_markup = await window.get_unknown_comman_window()
     await message.reply(message_text,
     reply_markup=reply_markup)
 
 @router.callback_query(F.data == "return_to_main_page")
-async def update_main_page(callback: CallbackQuery):
-    message_text, reply_markup = await get_main_menu_window()
+async def update_main_page(callback: CallbackQuery, state: FSMContext):
+    message_text, reply_markup = await window.get_main_menu_window()
 
     await callback.message.answer(message_text, reply_markup=reply_markup)
-    
-    await callback.message.delete()
-    
+
+    await state.set_state(AdminPanel.main_page)
+
     await callback.answer()

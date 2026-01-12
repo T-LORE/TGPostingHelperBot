@@ -15,11 +15,15 @@ async def is_admin(user_id: int) -> bool:
 async def add_to_queue(file_id: str, caption: str, media_type: str, publish_date: datetime):
     async with aiosqlite.connect(settings.database_path,
                                  detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
-        await db.execute(
+        async with db.execute(
             "INSERT INTO queue (file_id, caption, media_type, publish_date) VALUES (?, ?, ?, ?)", 
             (file_id, caption, media_type, publish_date)
-        )
+        ) as cursor:
+            post_id = cursor.lastrowid
+
         await db.commit()
+
+        return post_id
 
 async def get_queue_count():
     async with aiosqlite.connect(settings.database_path,
