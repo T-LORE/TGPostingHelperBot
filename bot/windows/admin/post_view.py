@@ -27,7 +27,7 @@ def get_buttons_markup(post_id: int, page: int = 1):
         )
     delete_btn = InlineKeyboardButton(
             text="Удалить пост",
-            callback_data=DeletePostCB(id=post_id, page=page).pack()
+            callback_data=DeletePostCB(id=post_id, page=page, source="view").pack()
         )
     row = [back_btn, delete_btn]
 

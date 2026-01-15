@@ -39,7 +39,7 @@ async def get_post_queue_window(page_number: int) -> tuple[str, InlineKeyboardMa
         post_buttons_row = []
         delete_btn = InlineKeyboardButton(
             text=f"🗑 {index}",
-            callback_data=DeletePostCB(id=post['id'], page=page_number).pack()
+            callback_data=DeletePostCB(id=post['id'], page=page_number, source="list").pack()
         )
         view_btn = InlineKeyboardButton(
             text=f"🔎 {index}",

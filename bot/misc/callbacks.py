@@ -19,6 +19,7 @@ class NavigationCB(CallbackData, prefix="nav"):
 class DeletePostCB(CallbackData, prefix="delpost"):
     id: int     
     page: int
+    source: str
 
 class ViewPostCB(CallbackData, prefix="viewpost"):
     id: int
