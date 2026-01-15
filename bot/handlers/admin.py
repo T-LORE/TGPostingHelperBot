@@ -12,6 +12,7 @@ from bot.middlewares.album import AlbumMiddleware
 import bot.windows.admin as window
 import bot.services.admin as service
 from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB, ViewPostCB
+from bot.misc.util import send_post_media
 
 router = Router()
 router.message.filter(IsAdmin())
@@ -149,17 +150,15 @@ async def view_post_btn_clicked(callback: CallbackQuery, callback_data: ViewPost
                 message_id=old_view_msg_id
             )
     
-    sent_msg = None
+    sent_msg = await send_post_media(
+        message=callback.message,
+        file_id=data["file_id"],
+        media_type=data["media_type"],
+        caption=data["caption"],
+        reply_markup=data["markup"]
+    )
 
-    if data["media_type"] == "photo":
-        sent_msg = await callback.message.answer_photo(photo=data["file_id"], caption=data["caption"], reply_markup=data["markup"])
-    elif data["media_type"] == "animation":
-        sent_msg = await callback.message.answer_animation(animation=data["file_id"], caption=data["caption"], reply_markup=data["markup"])
-    elif data["media_type"] == "video":
-        sent_msg = await callback.message.answer_video(video=data["file_id"], caption=data["caption"], reply_markup=data["markup"])
-
-    if sent_msg:
-        await state.update_data(opened_post_msg_id=sent_msg.message_id, opened_post_id=post_id)
+    await state.update_data(opened_post_msg_id=sent_msg.message_id, opened_post_id=post_id)
 
     await callback.answer()
 

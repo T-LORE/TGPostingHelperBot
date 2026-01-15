@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta, time
+from aiogram.types import Message, InlineKeyboardMarkup
 
 from bot.database.requests import get_latest_posts
 from bot.misc.env_config_reader import settings
@@ -46,3 +47,13 @@ def get_next_datetime_slot(start_datetime: datetime):
         
     next_day = start_datetime.date() + timedelta(days=1)
     return datetime.combine(next_day, schedule_times[0])
+
+async def send_post_media(message: Message, file_id: str, media_type: str, caption: str, reply_markup: InlineKeyboardMarkup = None) -> Message | None:
+    if media_type == "photo":
+        return await message.answer_photo(photo=file_id, caption=caption, reply_markup=reply_markup)
+    elif media_type == "video":
+        return await message.answer_video(video=file_id, caption=caption, reply_markup=reply_markup)
+    elif media_type == "animation":
+        return await message.answer_animation(animation=file_id, caption=caption, reply_markup=reply_markup)
+    else:
+        raise Exception("Invalid media type")
