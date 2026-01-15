@@ -15,7 +15,7 @@ async def get_post_view_window(post_id: int, page: int) -> tuple[str, InlineKeyb
         "file_id": post_data["file_id"],
         "media_type": post_data["media_type"],
         "publish_date": post_data["publish_date"],
-        "markup": get_buttons_markup(post_id)
+        "markup": get_buttons_markup(post_id, page)
     } 
 
 def get_buttons_markup(post_id: int, page: int = 1):
