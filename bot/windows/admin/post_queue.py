@@ -49,11 +49,11 @@ async def get_post_queue_window(page_number: int) -> tuple[str, InlineKeyboardMa
         builder.row(*post_buttons_row, width=5)
     
     page_nav_row = []
-    next_page_btn = InlineKeyboardButton(
+    previous_page_btn = InlineKeyboardButton(
             text="⬅️",
             callback_data=NavigationCB(page=page_number - 1).pack()
         )
-    previous_page_btn = InlineKeyboardButton(
+    next_page_btn = InlineKeyboardButton(
             text="➡️",
             callback_data=NavigationCB(page=page_number + 1).pack()
         )
@@ -62,9 +62,9 @@ async def get_post_queue_window(page_number: int) -> tuple[str, InlineKeyboardMa
         callback_data=AdminCB.RETURN_MAIN_EDIT
     )
     if page_number > 1:
-        page_nav_row.append(next_page_btn)
-    if page_number < page_count:
         page_nav_row.append(previous_page_btn)
+    if page_number < page_count:
+        page_nav_row.append(next_page_btn)
 
     builder.row(*page_nav_row)
     builder.row(*[menu_btn])
