@@ -35,7 +35,7 @@ async def get_post_queue_window(page_number: int) -> tuple[str, InlineKeyboardMa
 """)
 
     builder = InlineKeyboardBuilder()
-    for index, post in enumerate(posts_queue, start=1):
+    for index, post in enumerate(posts_queue, start=start_post + 1):
         post_buttons_row = []
         delete_btn = InlineKeyboardButton(
             text=f"🗑 {index}",
