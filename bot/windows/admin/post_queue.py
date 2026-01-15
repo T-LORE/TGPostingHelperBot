@@ -2,7 +2,7 @@ import textwrap
 
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB
+from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB, ViewPostCB
 
 from bot.database.requests import get_queue_count, get_earliest_posts
 
@@ -32,21 +32,21 @@ async def get_post_queue_window(page_number: int) -> tuple[str, InlineKeyboardMa
 Список (Стр. {page_number}/{page_count})
 -------------------
 {post_page_text}
-"""
-    )
-
+""")
 
     builder = InlineKeyboardBuilder()
-
-    buttons_row = []
     for index, post in enumerate(posts_queue, start=1):
-        btn = InlineKeyboardButton(
+        post_buttons_row = []
+        delete_btn = InlineKeyboardButton(
             text=f"🗑 {index}",
             callback_data=DeletePostCB(id=post['id'], page=page_number).pack()
         )
-        buttons_row.append(btn)
-
-    builder.row(*buttons_row, width=5)
+        view_btn = InlineKeyboardButton(
+            text=f"🔎 {index}",
+            callback_data=ViewPostCB(id=post['id'], page=page_number).pack()
+        )
+        post_buttons_row = [delete_btn, view_btn]
+        builder.row(*post_buttons_row, width=5)
     
     page_nav_row = []
     next_page_btn = InlineKeyboardButton(

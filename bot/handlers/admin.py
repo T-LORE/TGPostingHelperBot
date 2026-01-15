@@ -11,7 +11,7 @@ from bot.filters.admin import IsAdmin
 from bot.middlewares.album import AlbumMiddleware
 import bot.windows.admin as window
 import bot.services.admin as service
-from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB
+from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB, ViewPostCB
 
 router = Router()
 router.message.filter(IsAdmin())
@@ -77,6 +77,8 @@ async def post_queue(callback: CallbackQuery, state: FSMContext):
     with suppress(TelegramBadRequest):
         await callback.message.edit_text(message_text, reply_markup=reply_markup)
 
+    await state.update_data(list_msg_id=callback.message.message_id)
+
     await callback.answer()
 
 @router.callback_query(AdminPanel.post_queue_page, NavigationCB.filter())
@@ -91,18 +93,86 @@ async def post_queue_navigation(callback: CallbackQuery, callback_data: Navigati
     await callback.answer()
 
 @router.callback_query(AdminPanel.post_queue_page, DeletePostCB.filter())
-async def delete_post_btn_clicked(callback: CallbackQuery, callback_data: DeletePostCB):
+async def delete_post_btn_clicked(callback: CallbackQuery, callback_data: DeletePostCB, state: FSMContext):
     post_id = callback_data.id
     current_page = callback_data.page
 
     await service.delete_post(post_id)
+
+    await callback.answer("Пост удален")
+
+    state_data = await state.get_data()
+    view_msg_id = state_data.get("opened_post_msg_id")
+    opened_post_id = state_data.get("opened_post_id")
+    list_msg_id = state_data.get("list_msg_id")
+    
+    if view_msg_id:
+        is_deleting_opened_post_from_list = opened_post_id == post_id
+        is_deleting_from_opened_post_btn = callback.message.message_id == view_msg_id
+        if is_deleting_opened_post_from_list or is_deleting_from_opened_post_btn:
+            with suppress(TelegramBadRequest):
+                await callback.message.bot.delete_message(
+                    chat_id=callback.message.chat.id,
+                    message_id=view_msg_id
+                )
     
     message_text, reply_markup = await window.get_post_queue_window(current_page)
 
     with suppress(TelegramBadRequest):
-        await callback.message.edit_text(message_text, reply_markup=reply_markup)
+        await callback.message.bot.edit_message_text(
+            chat_id=callback.message.chat.id,
+            message_id=list_msg_id,
+            text=message_text,
+            reply_markup=reply_markup)    
+
+@router.callback_query(
+        AdminPanel.post_queue_page, 
+        ViewPostCB.filter()
+        )
+async def view_post_btn_clicked(callback: CallbackQuery, callback_data: ViewPostCB, state: FSMContext):
+    post_id = callback_data.id
+    current_page = callback_data.page
     
-    await callback.answer("Пост удален")
+    data = await window.get_post_view_window(post_id, current_page)
+
+    if data is None:
+        await callback.answer("Пост не найден")
+        return
+    
+    state_data = await state.get_data()
+    old_view_msg_id = state_data.get("opened_post_msg_id")
+
+    if old_view_msg_id:
+        with suppress(TelegramBadRequest):
+            await callback.message.bot.delete_message(
+                chat_id=callback.message.chat.id,
+                message_id=old_view_msg_id
+            )
+    
+    sent_msg = None
+
+    if data["media_type"] == "photo":
+        sent_msg = await callback.message.answer_photo(photo=data["file_id"], caption=data["caption"], reply_markup=data["markup"])
+    elif data["media_type"] == "animation":
+        sent_msg = await callback.message.answer_animation(animation=data["file_id"], caption=data["caption"], reply_markup=data["markup"])
+    elif data["media_type"] == "video":
+        sent_msg = await callback.message.answer_video(video=data["file_id"], caption=data["caption"], reply_markup=data["markup"])
+
+    if sent_msg:
+        await state.update_data(opened_post_msg_id=sent_msg.message_id, opened_post_id=post_id)
+
+    await callback.answer()
+
+@router.callback_query(
+        AdminPanel.post_queue_page, 
+        F.data == AdminCB.CLOSE_POST
+        )
+async def view_post_close_btn_clicked(callback: CallbackQuery, state: FSMContext):      
+    await callback.message.delete()
+
+    await state.update_data(opened_post_msg_id=None)
+
+    await callback.answer() 
 
 @router.message(
         AdminPanel.main_page,

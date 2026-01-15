@@ -71,3 +71,13 @@ async def delete_post(post_id: int):
         await db.execute("DELETE FROM queue WHERE id = ?", (post_id,))
 
         await db.commit()
+
+async def get_post(post_id: int):
+    async with aiosqlite.connect(settings.database_path,
+                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        db.row_factory = sqlite3.Row
+        async with db.execute(
+            "SELECT * FROM queue WHERE id = ?", 
+        (post_id,)) as cursor:
+            result = await cursor.fetchone()
+            return None if result is None else result

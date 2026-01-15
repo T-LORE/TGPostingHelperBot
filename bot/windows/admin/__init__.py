@@ -3,3 +3,4 @@ from .unknown_command import get_unknown_command_window
 from .posts_enqueued import get_message_enqueue_answer
 from .delete_all_posts_confirmation import get_delete_all_posts_confirmation
 from .post_queue import get_post_queue_window
+from .post_view import get_post_view_window

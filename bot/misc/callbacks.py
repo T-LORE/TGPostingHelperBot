@@ -6,6 +6,8 @@ class AdminCB:
     DELETE_ALL = "delete_all_posts"
     POST_QUEUE = "posts_enqueued"
     
+    CLOSE_POST = "close_post"
+
     RETURN_MAIN = "return_to_main_page"
     RETURN_MAIN_EDIT = "return_to_main_page_with_edit"
     RETURN_MAIN_DELETE = "return_to_main_page_with_delete"
@@ -16,4 +18,8 @@ class NavigationCB(CallbackData, prefix="nav"):
 
 class DeletePostCB(CallbackData, prefix="delpost"):
     id: int     
+    page: int
+
+class ViewPostCB(CallbackData, prefix="viewpost"):
+    id: int
     page: int
