@@ -61,7 +61,7 @@ async def upload_posts_to_schedule():
                 message=post['caption'],
                 schedule=post['publish_date'],
                 file=get_file_path(post['file_id']),
-                parse_mode='md'
+                parse_mode='html'
             )
 
             logger.info(f"Poster: Scheduled post #{post['id']} for {post['publish_date']}")

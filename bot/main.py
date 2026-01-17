@@ -2,6 +2,9 @@ from aiogram import Bot, Dispatcher
 
 import logging
 
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+
 from bot.misc.config import env, config
 from bot.handlers.admin import admin_router
 from bot.database import start_db
@@ -12,7 +15,12 @@ from bot.services.schedule_poster import start_telethon, stop_telethon, upload_p
 
 async def start_bot():
     logging.basicConfig(level=logging.INFO)
-    bot = Bot(token=env.bot_token.get_secret_value())
+    bot = Bot(
+        token=env.bot_token.get_secret_value(),
+        default=DefaultBotProperties(
+            parse_mode=ParseMode.HTML
+        )
+    )
     dp = Dispatcher()
 
     await start_db()
