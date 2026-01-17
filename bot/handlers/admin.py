@@ -207,7 +207,7 @@ async def handle_media_content(message: Message, album: list[Message] = None):
     files_to_process = album if album else [message]
     response = await service.enqueue_messages_media(files_to_process)
 
-    message_text, reply_markup  = await window.get_message_enqueue_answer(response["posts_id"])
+    message_text, reply_markup  = await window.get_message_enqueue_answer(response["posts"])
 
     await message.reply(message_text, reply_markup=reply_markup)
 

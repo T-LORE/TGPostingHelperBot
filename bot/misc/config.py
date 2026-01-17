@@ -12,6 +12,7 @@ class EnvSettings(BaseSettings):
     api_id: int
     api_hash: str
     session_name: str
+    media_storage_path: str
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
 class MutableConfig(BaseModel):
