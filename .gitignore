@@ -185,3 +185,5 @@ cython_debug/
 
 # Telegram
 *.session*
+
+config.json

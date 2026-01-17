@@ -2,17 +2,17 @@ from aiogram import Bot, Dispatcher
 
 import logging
 
-from bot.misc import env_config_reader
+from bot.misc.config import env, config
 from bot.handlers import user, admin
 from bot.database import start_db
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from bot.services.schedule_poster import start_telethon, stop_telethon, upload_posts_to_schedule
 
+
 async def start_bot():
     logging.basicConfig(level=logging.INFO)
-
-    bot = Bot(token=env_config_reader.settings.bot_token.get_secret_value())
+    bot = Bot(token=env.bot_token.get_secret_value())
     dp = Dispatcher()
 
     await start_db()
@@ -21,16 +21,16 @@ async def start_bot():
     
     await bot.delete_webhook(drop_pending_updates=True) # Do not answer to old messages that were sent when the bot was disabled
 
-    await start_telethon()
+    # await start_telethon()
 
     # scheduler = AsyncIOScheduler()
     # scheduler.add_job(upload_posts_to_schedule, "interval", minutes=5)
     # scheduler.start()
     
-    await upload_posts_to_schedule()
+    # await upload_posts_to_schedule()
     
     try:
         await dp.start_polling(bot)
     finally:
-        await stop_telethon()
+        # await stop_telethon()
         await bot.session.close()

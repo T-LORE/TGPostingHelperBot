@@ -1,6 +1,6 @@
 from aiogram.types import Message
 
-from bot.misc.env_config_reader import settings
+from bot.misc.config import env, config
 from bot.misc.util import get_next_posts_datetime
 from bot.database.requests import add_to_queue
 
@@ -27,7 +27,7 @@ async def enqueue_messages_media(messages_list: list[Message]):
             media_type = 'animation'
             
         if file_id:
-            post_id = await add_to_queue(file_id=file_id, caption=settings.post_caption, media_type=media_type, publish_date=publish_date)
+            post_id = await add_to_queue(file_id=file_id, caption=config.post_caption, media_type=media_type, publish_date=publish_date)
             response["posts_id"].append(post_id)
             response['added_count'] += 1
 

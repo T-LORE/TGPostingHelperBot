@@ -6,12 +6,12 @@ from telethon import TelegramClient
 from telethon.tl import types, functions
 from telethon.tl.custom.message import Message
 
-from bot.misc.env_config_reader import settings
+from bot.misc.config import env, config
 from bot.database.requests import get_not_uploaded_posts, update_post_tg_id
 
 logger = logging.getLogger(__name__)
 
-client = TelegramClient(settings.session_name, settings.api_id, settings.api_hash)
+client = TelegramClient(env.session_name, env.api_id, env.api_hash)
 
 async def start_telethon():
     await client.start()
@@ -24,7 +24,7 @@ async def upload_posts_to_schedule():
     logger.info("Poster: Checking for new posts to schedule...")
 
     try:
-        channel_peer = await client.get_input_entity(settings.channel_id)
+        channel_peer = await client.get_input_entity(env.channel_id)
         scheduled_messages = await client(functions.messages.GetScheduledHistoryRequest(
             peer=channel_peer, # PeerChanndel(id)
             hash=0
@@ -34,8 +34,8 @@ async def upload_posts_to_schedule():
         logger.error(f"Poster: Error checking scheduled messages: {e}")
         return   
 
-    spots_available = settings.max_tg_buffer_size - scheduled_messages.count
-    logger.info(f"Poster: Availiable spots: {max(0, spots_available)}/{settings.max_tg_buffer_size}")
+    spots_available = config.max_tg_buffer_size - scheduled_messages.count
+    logger.info(f"Poster: Availiable spots: {max(0, spots_available)}/{config.max_tg_buffer_size}")
     if spots_available <= 0:
         logger.info(f"Poster: Skip task")
         return

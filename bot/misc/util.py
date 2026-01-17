@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, time
 from aiogram.types import Message, InlineKeyboardMarkup
 
 from bot.database.requests import get_latest_posts
-from bot.misc.env_config_reader import settings
+from bot.misc.config import config
 
 def create_file_if_not_exist(path):
     if os.path.isfile(path):
@@ -35,7 +35,7 @@ async def get_next_posts_datetime(posts_amount: int):
     return result_dates
     
 def get_next_datetime_slot(start_datetime: datetime):
-    times = settings.post_timestamps.split(sep=",")
+    times = config.post_timestamps.split(sep=",")
     format_data = "%H:%M"
     schedule_times = sorted([datetime.strptime(time.strip(), format_data).time() for time in times])
 

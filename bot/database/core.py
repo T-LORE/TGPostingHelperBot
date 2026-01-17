@@ -1,18 +1,21 @@
 import aiosqlite
 import logging
 
-from bot.misc.env_config_reader import settings
+from bot.misc.config import env, config
 from bot.misc.util import create_file_if_not_exist
 
 logger = logging.getLogger(__name__)
-async def start_db():
-    
-    if create_file_if_not_exist(settings.database_path):
-        logger.warning(f"New database file \"{settings.database_path}\" was created!")
-    else:
-        logger.warning(f"Use existing database: \"{settings.database_path}\"")
+db_path = env.database_path
+root_admin_id = env.root_admin_id
 
-    async with aiosqlite.connect(settings.database_path) as db:
+async def start_db():
+
+    if create_file_if_not_exist(db_path):
+        logger.warning(f"New database file \"{db_path}\" was created!")
+    else:
+        logger.warning(f"Use existing database: \"{db_path}\"")
+
+    async with aiosqlite.connect(db_path) as db:
    
         await db.execute("""
             CREATE TABLE IF NOT EXISTS queue (
@@ -35,7 +38,7 @@ async def start_db():
         
         await db.execute(
             "INSERT OR IGNORE INTO admins (user_id) VALUES (?);",
-            (settings.root_admin_id,)
+            (root_admin_id,)
         )
 
         await db.commit()
