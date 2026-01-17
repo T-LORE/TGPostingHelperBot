@@ -15,7 +15,6 @@ import bot.services.admin as service
 router = Router()
 
 @router.callback_query(
-        AdminPanel.main_page,
         F.data == AdminCB.POST_QUEUE
         )
 async def post_queue(callback: CallbackQuery, state: FSMContext):
