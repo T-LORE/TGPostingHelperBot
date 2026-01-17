@@ -5,6 +5,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.filters import StateFilter
 
 from bot.misc.states import AdminPanel
 from bot.misc.callbacks import AdminCB
@@ -36,7 +37,7 @@ async def update_main_page(callback: CallbackQuery):
     await callback.answer()
 
 @router.message(
-        AdminPanel.main_page,
+        StateFilter(AdminPanel.main_page, None),
         F.photo | F.video | F.animation
         )
 async def handle_media_content(message: Message, album: list[Message] = None):
