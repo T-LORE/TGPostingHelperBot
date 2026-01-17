@@ -1,6 +1,7 @@
 import logging
 import time
 import datetime
+import os
 
 from telethon import TelegramClient
 from telethon.tl import types, functions
@@ -40,7 +41,7 @@ async def upload_posts_to_schedule():
         logger.info(f"Poster: Skip task")
         return
 
-    posts = await get_not_uploaded_posts(limit=1)
+    posts = await get_not_uploaded_posts(limit=spots_available)
     
     if not posts:
         logger.info(f"Poster: There is no posts in queue")
@@ -59,6 +60,7 @@ async def upload_posts_to_schedule():
                 entity=channel_peer,
                 message=post['caption'],
                 schedule=post['publish_date'],
+                file=get_file_path(post['file_id']),
                 parse_mode='md'
             )
 
@@ -71,3 +73,12 @@ async def upload_posts_to_schedule():
             logger.error(f"Poster: Failed to schedule post #{post['id']}: {e}")
         
         time.sleep(1)
+
+    logger.info(f"Poster: Done!")
+
+def get_file_path(file_id: str):
+    for root, dirs, files in os.walk(env.media_storage_path):
+        for file in files:
+            if file.startswith(file_id):
+                return os.path.join(root, file)
+    return None

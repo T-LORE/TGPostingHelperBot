@@ -21,13 +21,13 @@ async def start_bot():
     
     await bot.delete_webhook(drop_pending_updates=True) # Do not answer to old messages that were sent when the bot was disabled
 
-    # await start_telethon()
+    await start_telethon()
 
     # scheduler = AsyncIOScheduler()
     # scheduler.add_job(upload_posts_to_schedule, "interval", minutes=5)
     # scheduler.start()
     
-    # await upload_posts_to_schedule()
+    await upload_posts_to_schedule()
     
     try:
         await dp.start_polling(bot)
