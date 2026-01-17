@@ -81,3 +81,20 @@ async def get_post(post_id: int):
         (post_id,)) as cursor:
             result = await cursor.fetchone()
             return None if result is None else result
+
+async def update_post_tg_id(post_id: int, tg_message_id: int):
+    async with aiosqlite.connect(settings.database_path) as db:
+        await db.execute(
+            "UPDATE queue SET tg_message_id = ? WHERE id = ?",
+            (tg_message_id, post_id)
+        )
+        await db.commit()
+
+async def get_not_uploaded_posts(limit: int = 10):
+    async with aiosqlite.connect(settings.database_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        db.row_factory = sqlite3.Row
+        async with db.execute(
+            "SELECT * FROM queue WHERE tg_message_id IS NULL ORDER BY publish_date ASC LIMIT ?",
+            (limit,)
+        ) as cursor:
+            return await cursor.fetchall()

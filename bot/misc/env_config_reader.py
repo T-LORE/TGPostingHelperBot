@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     root_admin_id: int
     post_caption: str
     post_timestamps: str
+    max_tg_buffer_size: int
+    channel_id: int
+    api_id: int
+    api_hash: str
+    session_name: str
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
 settings = Settings()

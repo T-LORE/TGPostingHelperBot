@@ -1,13 +1,16 @@
 import aiosqlite
+import logging
+
 from bot.misc.env_config_reader import settings
 from bot.misc.util import create_file_if_not_exist
 
-
+logger = logging.getLogger(__name__)
 async def start_db():
+    
     if create_file_if_not_exist(settings.database_path):
-        print(f"INFO:New database file \"{settings.database_path}\" was created!")
+        logger.warning(f"New database file \"{settings.database_path}\" was created!")
     else:
-        print(f"INFO:Use existing database: \"{settings.database_path}\"")
+        logger.warning(f"Use existing database: \"{settings.database_path}\"")
 
     async with aiosqlite.connect(settings.database_path) as db:
    
@@ -18,6 +21,8 @@ async def start_db():
                 caption TEXT,
                 media_type TEXT DEFAULT 'photo',
                 publish_date TIMESTAMP,
+                tg_message_id INTEGER DEFAULT NULL,
+                status TEXT DEFAULT 'pending',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
