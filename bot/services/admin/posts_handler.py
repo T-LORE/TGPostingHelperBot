@@ -1,8 +1,10 @@
+from datetime import datetime
+
 from aiogram.types import Message
 
 from bot.misc.config import env, config
-from bot.misc.util import get_next_posts_datetime
-from bot.database.requests import delete_all_posts, delete_post, get_post, add_to_queue, get_tg_scheduled_posts
+from bot.misc.util import get_next_post_slot
+from bot.database.requests import delete_all_posts, delete_post, get_post, add_to_queue, get_tg_scheduled_posts, get_latest_posts
 from bot.services.schedule_poster import delete_posts_from_tg
 
 MAX_FILE_SIZE = 20*1024*1024
@@ -13,15 +15,21 @@ async def enqueue_messages_media(messages_list: list[Message]):
         "posts": []
     }
 
-    dates_list = await get_next_posts_datetime(len(messages_list))
+    lastest_post = await get_latest_posts(start_post=0, posts_amount=1)
+    lastest_post_datetime = datetime.now()
 
-    for msg, publish_date in zip(messages_list, dates_list):
+    if lastest_post is not None and len(lastest_post) > 0:
+        lastest_post_datetime = lastest_post[0]['publish_date']
+
+    for msg in messages_list:
         file_id = None
         media_type = 'photo'
         post = {
             "post_id": -1,
             "status": ""
         }
+        publish_date, caption = await get_next_post_slot(lastest_post_datetime)
+
         if msg.photo:
             if msg.photo[-1].file_size > MAX_FILE_SIZE:
                 post['status']= "File too big!"
@@ -54,7 +62,7 @@ async def enqueue_messages_media(messages_list: list[Message]):
                 media_type = 'animation'
           
         if file_id:
-            post_id = await add_to_queue(file_id=file_id, caption=config.post_caption, media_type=media_type, publish_date=publish_date)
+            post_id = await add_to_queue(file_id=file_id, caption=caption, media_type=media_type, publish_date=publish_date)
             post['status'] = 'OK'
             post['post_id'] = post_id
             response['added_count'] += 1

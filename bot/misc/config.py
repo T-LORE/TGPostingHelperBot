@@ -1,6 +1,6 @@
 import os
 import logging
-
+from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import BaseModel, SecretStr
 
@@ -15,10 +15,16 @@ class EnvSettings(BaseSettings):
     media_storage_path: str
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
+
+class ScheduleSlot(BaseModel):
+    time: str
+    caption: str
+
+
 class MutableConfig(BaseModel):
-    post_caption: str
-    post_timestamps: str
     max_tg_buffer_size: int
+    timezone: str
+    post_timestamps: List[ScheduleSlot]
 
     def save(self):
         with open('config.json', 'w', encoding='utf-8') as f:
@@ -29,13 +35,16 @@ def load_mutable_config() -> MutableConfig:
 
     if not os.path.exists('config.json'):
         logger.warning("Creating new config file")
-        default_config = MutableConfig(
-            post_caption="Подпись по умолчанию",
-            post_timestamps="12:00,13:00,14:00",
-            max_tg_buffer_size=80
+        default = MutableConfig(
+            max_tg_buffer_size=10,
+            timezone="UTC+3",
+            post_timestamps=[
+                ScheduleSlot(time="10:00", caption="Привет!"),
+                ScheduleSlot(time="18:00", caption="Пока!")
+            ]
         )
-        default_config.save()
-        return default_config
+        default.save()
+        return default
     
     with open('config.json', 'r', encoding='utf-8') as f:
         return MutableConfig.model_validate_json(f.read())

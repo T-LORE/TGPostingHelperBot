@@ -9,6 +9,7 @@ from telethon.tl.custom.message import Message
 
 from bot.misc.config import env, config
 from bot.database.requests import get_not_uploaded_posts, update_post_tg_id
+from bot.misc.util import convert_timezone
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ async def upload_posts_to_schedule():
             sent_message = await client.send_message(
                 entity=channel_peer,
                 message=post['caption'],
-                schedule=post['publish_date'],
+                schedule=convert_timezone(post['publish_date']),
                 file=get_file_path(post['file_id']),
                 parse_mode='html'
             )

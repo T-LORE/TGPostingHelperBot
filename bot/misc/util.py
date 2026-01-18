@@ -1,8 +1,9 @@
 import os
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo 
+
 from aiogram.types import Message, InlineKeyboardMarkup
 
-from bot.database.requests import get_latest_posts
 from bot.misc.config import config
 
 def create_file_if_not_exist(path):
@@ -18,35 +19,35 @@ def create_file_if_not_exist(path):
         os.utime(path, None)
 
     return True
-
-async def get_next_posts_datetime(posts_amount: int):
-    posts = await get_latest_posts(start_post=0, posts_amount=1)
-    if posts is None or len(posts) == 0:
-        latest_date = datetime.now()
-    else:
-        post = posts[0]
-        latest_date = datetime.now() if post is None else post["publish_date"]
-    result_dates = []
-
-    for _ in range(posts_amount):
-        latest_date =  get_next_datetime_slot(latest_date)
-        result_dates.append(latest_date)
-
-    return result_dates
+  
+async def get_next_post_slot(last_date: datetime | None):
+    slots = []
+    for slot in config.post_timestamps:
+        t = datetime.strptime(slot.time.strip(), "%H:%M").time()
+        slots.append({"time": t, "caption": slot.caption})
     
-def get_next_datetime_slot(start_datetime: datetime):
-    times = config.post_timestamps.split(sep=",")
-    format_data = "%H:%M"
-    schedule_times = sorted([datetime.strptime(time.strip(), format_data).time() for time in times])
+    slots.sort(key=lambda x: x["time"])
 
-    current_time = start_datetime.time()
+    if not last_date:
+        last_date = datetime.now()
 
-    for slot in schedule_times:
-        if slot > current_time:      
-            return datetime.combine(start_datetime.date(), slot)
-        
-    next_day = start_datetime.date() + timedelta(days=1)
-    return datetime.combine(next_day, schedule_times[0])
+    current_time = last_date.time()
+
+    for slot in slots:
+        if slot["time"] > current_time:
+            next_dt = datetime.combine(last_date.date(), slot["time"])
+            return next_dt, slot["caption"]
+
+    first_slot = slots[0]
+    next_day = last_date.date() + timedelta(days=1)
+    next_dt = datetime.combine(next_day, first_slot["time"])
+    
+    return next_dt, first_slot["caption"]
+
+def convert_timezone(date: datetime) -> datetime:
+    target_tz = ZoneInfo(config.timezone)
+    
+    return date.astimezone(target_tz)
 
 async def send_post_media(message: Message, file_id: str, media_type: str, caption: str, reply_markup: InlineKeyboardMarkup = None) -> Message | None:
     if media_type == "photo":
