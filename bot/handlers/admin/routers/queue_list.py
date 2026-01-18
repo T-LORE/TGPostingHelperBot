@@ -50,7 +50,11 @@ async def delete_from_list(callback: CallbackQuery, callback_data: DeletePostCB,
     post_id = callback_data.id
     current_page = callback_data.page
 
-    await service.delete_post_from_queue(post_id)
+    is_deleted = await service.delete_post_from_queue(post_id)
+
+    if not is_deleted:
+        await callback.answer("Не удалось удалить пост", show_alert=True)
+        return
 
     state_data = await state.get_data()
     opened_post_id = state_data.get("opened_post_id")
@@ -79,8 +83,12 @@ async def delete_from_view(callback: CallbackQuery, callback_data: DeletePostCB,
     post_id = callback_data.id
     current_page = callback_data.page
 
-    await service.delete_post_from_queue(post_id)
-    
+    is_deleted = await service.delete_post_from_queue(post_id)
+
+    if not is_deleted:
+        await callback.answer("Не удалось удалить пост", show_alert=True)
+        return
+
     await state.update_data(opened_post_msg_id=None, opened_post_id=None)
 
     state_data = await state.get_data()

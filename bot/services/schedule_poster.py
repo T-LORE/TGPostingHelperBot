@@ -1,5 +1,5 @@
 import logging
-import time
+import asyncio
 import datetime
 import os
 
@@ -30,6 +30,7 @@ async def upload_posts_to_schedule():
             peer=channel_peer, # PeerChanndel(id)
             hash=0
         ))
+        # logger.info("\n" + scheduled_messages.stringify())
         logger.info(f"Poster: current scheduled posts: {scheduled_messages.count}")
     except Exception as e:
         logger.error(f"Poster: Error checking scheduled messages: {e}")
@@ -56,23 +57,23 @@ async def upload_posts_to_schedule():
                 logger.warning(f"Poster: post #{post['id']} skipped his publish date: {post['publish_date']}!")
                 pass
             
-            await client.send_message(
+            sent_message = await client.send_message(
                 entity=channel_peer,
                 message=post['caption'],
                 schedule=post['publish_date'],
                 file=get_file_path(post['file_id']),
                 parse_mode='html'
             )
+            tg_msg_id = sent_message.id
 
-            logger.info(f"Poster: Scheduled post #{post['id']} for {post['publish_date']}")
+            logger.info(f"Poster: SUCCESS post #{post['id']} for {post['publish_date']} -> TG ID: {tg_msg_id}")
             
-            #TODO: get message id
-            await update_post_tg_id(post['id'], 1)
+            await update_post_tg_id(post['id'], tg_msg_id)
             
         except Exception as e:
             logger.error(f"Poster: Failed to schedule post #{post['id']}: {e}")
         
-        time.sleep(1)
+        await asyncio.sleep(1) 
 
     logger.info(f"Poster: Done!")
 
@@ -82,3 +83,27 @@ def get_file_path(file_id: str):
             if file.startswith(file_id):
                 return os.path.join(root, file)
     return None
+
+async def delete_posts_from_tg(tg_message_ids: list[int]):
+    if not tg_message_ids:
+        return
+
+    try:
+        if not client.is_connected():
+            await client.connect()
+
+        channel_peer = await client.get_input_entity(env.channel_id)
+
+        await client(functions.messages.DeleteScheduledMessagesRequest(
+            peer=channel_peer,
+            id=tg_message_ids
+        ))
+        
+        logger.info(f"Poster: TG deleted messages ids: {tg_message_ids} ")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Poster: Failed to delete messages from TG {tg_message_ids}: {e}")
+
+    return False

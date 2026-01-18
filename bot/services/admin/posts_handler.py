@@ -2,8 +2,8 @@ from aiogram.types import Message
 
 from bot.misc.config import env, config
 from bot.misc.util import get_next_posts_datetime
-from bot.database.requests import delete_all_posts, delete_post, get_post, add_to_queue
-from bot.services.schedule_poster import delete_post_from_tg
+from bot.database.requests import delete_all_posts, delete_post, get_post, add_to_queue, get_tg_scheduled_posts
+from bot.services.schedule_poster import delete_posts_from_tg
 
 MAX_FILE_SIZE = 20*1024*1024
 
@@ -65,7 +65,30 @@ async def enqueue_messages_media(messages_list: list[Message]):
     return response
 
 async def delete_all_posts_from_queue():
-    await delete_all_posts()
+    posts = await get_tg_scheduled_posts()
+    if posts is None or len(posts) == 0:
+        return
+    
+    ids = [post['tg_message_id'] for post in posts]
+   
+    is_in_tg = await delete_posts_from_tg(ids)
+
+    if is_in_tg:
+        await delete_all_posts()
+        return True
+
+    return False
 
 async def delete_post_from_queue(post_id: int):
-    await delete_post(post_id)
+    post = await get_post(post_id)
+    
+    is_in_tg = True
+
+    if post and post['tg_message_id']:
+        is_in_tg = await delete_posts_from_tg([post['tg_message_id']])
+
+    if is_in_tg:
+        await delete_post(post_id)
+        return True
+
+    return False
