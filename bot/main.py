@@ -11,10 +11,11 @@ from bot.database import start_db
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from bot.services.schedule_poster import start_telethon, stop_telethon, upload_posts_to_schedule
-
+from bot.misc.logger import configure_logger
 
 async def start_bot():
-    logging.basicConfig(level=logging.INFO)
+    configure_logger()
+    
     bot = Bot(
         token=env.bot_token.get_secret_value(),
         default=DefaultBotProperties(

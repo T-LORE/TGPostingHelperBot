@@ -190,3 +190,4 @@ config.json
 bot/database/db/media/*.mp4
 bot/database/db/media/*.gif
 bot/database/db/media/*.jpg
+logs/*
