@@ -1,76 +1,339 @@
 import textwrap
+import logging
+from datetime import datetime, timedelta
 
+from babel.dates import format_date, format_datetime, format_time
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB, ViewPostCB
+from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB, ViewPostCB, DateViewCB, AddPostCB
 
-from bot.database.requests import get_queue_count, get_earliest_posts
+from bot.database.requests import get_queue_count, get_earliest_posts, get_post_by_day, get_not_published_posts
+from bot.misc.config import config
 
-POSTS_ON_PAGE = 10
+logger = logging.getLogger(__name__)
 
-async def get_post_queue_window(page_number: int) -> tuple[str, InlineKeyboardMarkup]:
-    queue_count = await get_queue_count()
+async def get_post_queue_window(date: datetime) -> tuple[str, InlineKeyboardMarkup]:
+    date = datetime.combine(date, datetime.min.time())
     
-    if queue_count == 0:
-        return "Список пуст.", InlineKeyboardBuilder().add(InlineKeyboardButton(text="Назад", callback_data=AdminCB.RETURN_MAIN_EDIT)).as_markup()
+    not_published_posts = await get_not_published_posts()
+    post_at_date = await get_post_by_day(date)
     
-    page_count = (queue_count + POSTS_ON_PAGE - 1) // POSTS_ON_PAGE
-    
-    if page_number > page_count: 
-        page_number = page_count
-    if page_number < 1: 
-        page_number = 1
-    
-    start_post = (page_number - 1) * POSTS_ON_PAGE
-    posts_queue = await get_earliest_posts(start_post, POSTS_ON_PAGE)
+    page_count = count_pages(not_published_posts)
+    current_page = get_page_for_date(date, not_published_posts)
 
-    post_page_text = ""
-    for number, post in enumerate(posts_queue, start=start_post + 1):
-        post_page_text += f"{number}. {create_post_string(post['id'], post['publish_date'])}\n"
-    
-    message_text = (f"""
-Список (Стр. {page_number}/{page_count})
--------------------
-{post_page_text}
-""")
+    if page_count == 0:
+        page_count = 1
+        current_page = 1
+        date = datetime.now()
 
+    # 🗓19 Января 2026 (Понедельник)
+    day = date.day
+    month = format_date(date.date(), "MMMM", locale='ru')
+    year = date.year
+    weekday = format_date(date.date(), "EEEE", locale='ru')
+    date_text = f"🗓{day} {month} {year} ({weekday})"
+
+    # 📖Стр. 1 из 5 (Сегодня)
+    day_representation = get_day_representation(date)
+    day_representation = f"({day_representation})" if day_representation is not None else ""
+    page_text = f"📖Стр. {current_page} из {page_count} {day_representation}"
+
+    tables = get_tables_str(date, post_at_date)
+    message_text = f"{date_text}\n{page_text}\n\n{tables}"
+
+    buttons = get_buttons(date, not_published_posts, post_at_date)
+    
+    return message_text, buttons 
+
+def get_post_queue_window_start():
+    return get_post_queue_window(datetime.now().date())
+
+def get_buttons(target_date, not_published_posts, target_posts):
     builder = InlineKeyboardBuilder()
-    for index, post in enumerate(posts_queue, start=start_post + 1):
-        post_buttons_row = []
-        delete_btn = InlineKeyboardButton(
-            text=f"🗑 {index}",
-            callback_data=DeletePostCB(id=post['id'], page=page_number, source="list").pack()
-        )
-        view_btn = InlineKeyboardButton(
-            text=f"🔎 {index}",
-            callback_data=ViewPostCB(id=post['id'], page=page_number).pack()
-        )
-        post_buttons_row = [delete_btn, view_btn]
-        builder.row(*post_buttons_row, width=5)
+
+    nav_builder = get_navigation_builder(target_date, not_published_posts)
     
-    page_nav_row = []
-    previous_page_btn = InlineKeyboardButton(
-            text="⬅️",
-            callback_data=NavigationCB(page=page_number - 1).pack()
-        )
-    next_page_btn = InlineKeyboardButton(
-            text="➡️",
-            callback_data=NavigationCB(page=page_number + 1).pack()
-        )
+    timestamps_posts, off_schedule_posts = sort_posts_by_timestamps(target_posts)
+    timestamp_posts_builder = get_builder_for_timestamps_posts(timestamps_posts, target_date)
+    off_schedule_posts_builder = get_builder_for_off_scheduled_posts(off_schedule_posts, target_date)
+    
     menu_btn = InlineKeyboardButton(
         text="В меню",
         callback_data=AdminCB.RETURN_MAIN_EDIT
     )
-    if page_number > 1:
-        page_nav_row.append(previous_page_btn)
-    if page_number < page_count:
-        page_nav_row.append(next_page_btn)
 
-    builder.row(*page_nav_row)
-    builder.row(*[menu_btn])
+    builder.attach(timestamp_posts_builder)
+    builder.attach(off_schedule_posts_builder)
+    builder.attach(nav_builder)
+    builder.row(menu_btn)
+
+    return builder.as_markup()
+
+def get_navigation_builder(target_date, not_published_posts):
+    builder = InlineKeyboardBuilder()
+    target_date = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    next_day = target_date + timedelta(days=1)
+    previous_day = target_date - timedelta(days=1)
+    earliest_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    latest_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    if len(not_published_posts) > 0:
+        earliest_date = not_published_posts[0]["publish_date"].replace(hour=0, minute=0, second=0, microsecond=0)
+        latest_date = not_published_posts[-1]["publish_date"].replace(hour=0, minute=0, second=0, microsecond=0)
+
+    if earliest_date > datetime.now():
+        earliest_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    if latest_date < datetime.now():
+        latest_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    buttons = []
+    if target_date > earliest_date:
+        buttons.append(InlineKeyboardButton(
+            text="⬅️",
+            callback_data=DateViewCB(
+                        day=previous_day.day,
+                        month=previous_day.month,
+                        year=previous_day.year
+                    ).pack()
+                )
+            )
+    if target_date < latest_date:
+        buttons.append(InlineKeyboardButton(
+            text="➡️",
+            callback_data=DateViewCB(
+                        day=next_day.day,
+                        month=next_day.month,
+                        year=next_day.year
+                    ).pack()
+                )
+            )
+    builder.row(*buttons)
+    return builder
+
+def get_builder_for_timestamps_posts(posts, target_date: datetime):
+    builder = InlineKeyboardBuilder()
+    for timestamp in config.post_timestamps:
+        timestamp = datetime.strptime(timestamp.time.strip(), "%H:%M").time()
+        timestamp = datetime.combine(target_date.date(), timestamp)
+
+        find_post = [post for post in posts if post["publish_date"].replace(second=0, microsecond=0) == timestamp]
+        status = determine_post_status(timestamp, find_post[0] if len(find_post) >= 1 else None)
+        btn = create_post_button(status=status, post_id=find_post[0]["id"] if len(find_post) >= 1 else None, publish_date=timestamp)
+        if len(btn) > 0:
+            builder.row(*btn)
+    return builder
+
+def get_builder_for_off_scheduled_posts(posts, target_date: datetime):
+    builder = InlineKeyboardBuilder()
+    for post in posts:
+        status = determine_post_status(target_date, post)
+        btn = create_post_button(status=status, post_id=post["id"], publish_date=post["publish_date"])
+        if len(btn) > 0:
+            builder.row(*btn)
+    return builder 
+
+def get_day_representation(date: datetime):
+    if date.day == datetime.now().day:
+        return "Сегодня"
+    elif date.day == datetime.now().day + 1:
+        return "Завтра"
+    elif date.day == datetime.now().day + 2:
+        return "Послезавтра"
+    elif date.day == datetime.now().day - 1:
+        return "Вчера"
+    elif date.day == datetime.now().day - 2:
+        return "Позавчера"
+    else:
+        return None
+
+def count_pages(not_published_posts):
+    if len(not_published_posts) == 0:
+        return 1
     
-    return message_text, builder.as_markup()
+    earliest_post = not_published_posts[0]["publish_date"].replace(hour=0, minute=0, second=0, microsecond=0)
+    latest_post = not_published_posts[-1]["publish_date"].replace(hour=0, minute=0, second=0, microsecond=0)
 
-def create_post_string(post_id: int, publish_date: str) -> str:
-    date_str = publish_date.strftime("Дата: %d.%m Время: %H:%M")
-    return f"#{post_id} {date_str}"
+    if earliest_post > datetime.now():
+        earliest_post = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    if latest_post < datetime.now():
+        latest_post = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    days = (latest_post - earliest_post).days
+    return days + 1
+
+def get_page_for_date(target_date: datetime, not_published_posts):
+    if len(not_published_posts) == 0:
+        return 1
+    
+    earliest_post = not_published_posts[0]["publish_date"].replace(hour=0, minute=0, second=0, microsecond=0)
+    latest_post = not_published_posts[-1]["publish_date"].replace(hour=0, minute=0, second=0, microsecond=0)
+
+    if earliest_post > datetime.now():
+        earliest_post = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    if latest_post < datetime.now():
+        latest_post = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    sorted_days = [earliest_post + timedelta(days=x) for x in range((latest_post - earliest_post).days + 1)]
+
+    if target_date not in sorted_days:
+        if target_date > sorted_days[-1]:
+            target_date = sorted_days[-1]
+        elif target_date < sorted_days[0]:
+            target_date = sorted_days[0]
+
+    page = sorted_days.index(target_date) + 1
+    return page
+
+def get_tables_str(target_date: datetime, posts):
+    timestamps_posts, off_schedule_posts = sort_posts_by_timestamps(posts)
+
+    timestamp_table = create_timestamp_table(timestamps_posts, target_date)
+    off_schedule_table = create_off_schedule_table(off_schedule_posts, target_date)
+    table_str = f"Основное расписание:\n{timestamp_table}"
+    if len(off_schedule_posts) > 0:
+        table_str += f"\n\n📌Вне графика:\n{off_schedule_table}"
+    return table_str
+
+def sort_posts_by_timestamps(posts):
+    posts_copy = posts.copy()
+
+    timestamps_posts = []
+    off_schedule_posts = []
+
+    timestamps = [datetime.strptime(stamp.time.strip(), "%H:%M").time() for stamp in config.post_timestamps]
+
+    for timestamp in timestamps:
+        find_post = [post for post in posts_copy if post["publish_date"].time().replace(second=0, microsecond=0) == timestamp]
+        if len(find_post) >= 2:
+            logger.warning(f"Found many posts for timestamp {timestamp} ({[post['id'] for post in find_post]}).")
+        if len(find_post) >= 1:
+            timestamps_posts.append(find_post[0])
+            posts_copy.remove(find_post[0])
+    
+    off_schedule_posts += posts_copy
+
+    return timestamps_posts, off_schedule_posts
+
+def create_timestamp_table(posts, target_date: datetime):
+    table = ""
+    for timestamp in config.post_timestamps:
+        timestamp = datetime.strptime(timestamp.time.strip(), "%H:%M").time()
+        timestamp = datetime.combine(target_date.date(), timestamp)
+
+        find_post = [post for post in posts if post["publish_date"].replace(second=0, microsecond=0) == timestamp]
+        status = determine_post_status(timestamp, find_post[0] if len(find_post) >= 1 else None)
+
+        table += create_table_row(timestamp, find_post[0]["id"] if len(find_post) >= 1 else None, status)
+
+    return table
+
+def create_off_schedule_table(posts, target_date: datetime):
+    table = ""
+    for post in posts:
+        status = determine_post_status(target_date, post)
+        table += create_table_row(post["publish_date"], post["id"], status)
+    
+    return table
+
+
+def determine_post_status(target_date: datetime, post = None):
+    status = "unknown"
+    if post == None:
+        status = "free" if datetime.now() < target_date else status
+        status = "missed" if datetime.now() >= target_date else status
+        return status
+    
+    status = "expired" if post["publish_date"] <= datetime.now() and post["tg_message_id"] is None else status
+    status = "tg_hold" if post["tg_message_id"] is not None and post["publish_date"] > datetime.now() else status
+    status = "posted" if post["tg_message_id"] is not None and post["publish_date"] <= datetime.now() else status
+    status = "db_hold" if post["tg_message_id"] is None and post["publish_date"] > datetime.now() else status
+
+    return status
+
+
+def create_table_row(time: datetime, post_id: int, status: str):
+    STATUS_MAP = {
+    "expired":   {"icon": "💔", "text": "Просрочено"},
+    "tg_hold":   {"icon": "✈️", "text": "в отложке"},
+    "posted":    {"icon": "✅", "text": "опубликован"},
+    "db_hold":   {"icon": "📦", "text": "создан"},
+    "free":      {"icon": "❌", "text": "Свободно"},
+    "missed":    {"icon": "⚪️", "text": "пусто"},
+    }
+    
+    if post_id is None:
+        post_id = normalize_str("-----", 10)
+    else:
+        post_id = normalize_str(f"#{str(post_id)}", 10)
+
+    status_data = STATUS_MAP[status] if status in STATUS_MAP else {"icon": "❓", "text": "Неизвестно"}
+    
+    time = time.strftime("%H:%M")
+    row = f"{time}|{post_id}|{status_data['icon']} {status_data['text']}\n"
+
+    return row
+
+def create_post_button(status, post_id : int = None, publish_date : datetime = None):
+    if status == "expired":
+        return [InlineKeyboardButton(
+            text=f"🗑 #{post_id}", 
+            callback_data=DeletePostCB(
+                id=post_id, 
+                source="list", 
+                page=-1).pack())]
+    
+    elif status == "free":
+        return [InlineKeyboardButton(
+            text=f"Добавить пост в {publish_date.strftime('%H:%M')}", 
+            callback_data=AddPostCB(
+                day=publish_date.day,
+                month=publish_date.month,
+                year=publish_date.year,
+                hour=publish_date.hour,
+                minute=publish_date.minute
+            ).pack())]
+    
+    elif status == "tg_hold" or status == "db_hold":
+        return [
+            InlineKeyboardButton(
+                text=f"🔎 #{post_id}", 
+                callback_data=ViewPostCB(
+                    id=post_id, 
+                    page=-1).pack()),
+            InlineKeyboardButton(
+                text=f"🗑 #{post_id}", 
+                callback_data=DeletePostCB(
+                    id=post_id,
+                    page=-1,
+                    source="list"
+            ).pack())]
+    
+    elif status == "posted":
+        return [
+            InlineKeyboardButton(
+                text=f"🔎 #{post_id}", 
+                callback_data=ViewPostCB(
+                    id=post_id, 
+                    page=-1).pack())]
+    
+    else:
+        return []
+
+
+
+def normalize_str(text, width = 10):
+    text = str(text)
+    current_len = len(text)
+    
+    if current_len > width:
+        if width <= 3:
+            return text[:width]
+        
+        side_len = (width - 3) // 2
+        left_part = text[:side_len]
+        right_part = text[-(width - 3 - side_len):]
+        
+        return f"{left_part}...{right_part}"
+    
+    else:
+        return text.center(width)

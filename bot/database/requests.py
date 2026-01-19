@@ -1,6 +1,7 @@
 import aiosqlite
 import sqlite3
 import datetime
+from datetime import timedelta
 
 from bot.misc.config import env
 
@@ -118,5 +119,19 @@ async def get_not_published_posts():
         async with db.execute(
             "SELECT * FROM queue WHERE publish_date > ? OR (publish_date <= ? AND tg_message_id IS NULL) ORDER BY publish_date ASC",
             (now, now)
+        ) as cursor:
+            return await cursor.fetchall()
+        
+async def get_post_by_day(day: datetime):
+    start_of_day = day.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = start_of_day + timedelta(days=1)
+
+    async with aiosqlite.connect(db_path,
+                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        db.row_factory = sqlite3.Row
+        
+        async with db.execute(
+            "SELECT * FROM queue WHERE publish_date >= ? AND publish_date < ? ORDER BY publish_date ASC", 
+            (start_of_day, end_of_day)
         ) as cursor:
             return await cursor.fetchall()

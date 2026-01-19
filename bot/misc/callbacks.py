@@ -25,3 +25,15 @@ class DeletePostCB(CallbackData, prefix="delpost"):
 class ViewPostCB(CallbackData, prefix="viewpost"):
     id: int
     page: int
+
+class DateViewCB(CallbackData, prefix="dateview"):
+    day: int
+    month: int
+    year: int
+
+class AddPostCB(CallbackData, prefix="addpost"):
+    day: int
+    month: int
+    year: int
+    hour: int
+    minute: int
