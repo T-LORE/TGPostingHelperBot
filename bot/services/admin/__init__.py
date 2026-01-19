@@ -1,1 +1,1 @@
-from .posts_handler import delete_all_posts_from_queue, delete_post_from_queue, enqueue_messages_media
+from .posts_handler import delete_all_posts_from_queue, delete_post_from_queue, enqueue_messages_media, update_tg_schedule

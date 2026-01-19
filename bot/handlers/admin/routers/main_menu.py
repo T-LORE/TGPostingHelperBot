@@ -7,6 +7,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
 from bot.misc.states import AdminPanel
 from bot.misc.callbacks import AdminCB
 import bot.windows.admin as window
@@ -35,6 +38,21 @@ async def update_main_page(callback: CallbackQuery):
         await callback.message.edit_text(message_text, reply_markup=reply_markup)
     
     await callback.answer()
+
+@router.callback_query(
+        F.data == AdminCB.UPDATE_TG_SCHEDULE,
+        )
+async def update_tg_schedule(callback: CallbackQuery):
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text("Обновление отложки...")
+    
+    posted, not_posted = await service.update_tg_schedule()
+
+    builder = InlineKeyboardBuilder()
+    return_btn = InlineKeyboardButton(text="Вернуться на главную", callback_data=AdminCB.RETURN_MAIN_EDIT),
+    builder.row(*return_btn)
+
+    await callback.message.edit_text(f"Обновление завершено: {len(posted)} постов отправлено, {len(not_posted)} не отправлено", reply_markup=builder.as_markup())
 
 @router.message(
         StateFilter(AdminPanel.main_page, None),

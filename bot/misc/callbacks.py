@@ -5,6 +5,7 @@ class AdminCB:
     DELETE_ALL_CONFIRM = "delete_all_posts_confirmation"
     DELETE_ALL = "delete_all_posts"
     POST_QUEUE = "posts_enqueued"
+    UPDATE_TG_SCHEDULE = "update_tg_schedule"
     
     CLOSE_POST = "close_post"
 

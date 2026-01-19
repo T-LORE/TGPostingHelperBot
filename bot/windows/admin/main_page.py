@@ -26,17 +26,12 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
     )
 
     builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(
-        text="🔄 Обновить",
-        callback_data=AdminCB.UPDATE
-    ))
-    builder.add(InlineKeyboardButton(
-        text="Удалить всё",
-        callback_data=AdminCB.DELETE_ALL_CONFIRM
-    ))
-    builder.add(InlineKeyboardButton(
-        text="Просмотр постов",
-        callback_data=AdminCB.POST_QUEUE
-    ))
+    builder.row(
+        InlineKeyboardButton(text="🔄 Обновить", callback_data=AdminCB.UPDATE),
+        InlineKeyboardButton(text="Удалить всё", callback_data=AdminCB.DELETE_ALL_CONFIRM)
+        )
+    builder.row(InlineKeyboardButton(text="Просмотр постов", callback_data=AdminCB.POST_QUEUE))
+    builder.row(InlineKeyboardButton(text="Обновить отложку телеграмма", callback_data=AdminCB.UPDATE_TG_SCHEDULE))
+
     
     return message_text, builder.as_markup()

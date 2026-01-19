@@ -24,6 +24,8 @@ async def stop_telethon():
 
 async def upload_posts_to_schedule():
     logger.info("Poster: Checking for new posts to schedule...")
+    scheduled_posts = []
+    exception_posts = []
 
     try:
         channel_peer = await client.get_input_entity(env.channel_id)
@@ -35,19 +37,19 @@ async def upload_posts_to_schedule():
         logger.info(f"Poster: current scheduled posts: {scheduled_messages.count}")
     except Exception as e:
         logger.error(f"Poster: Error checking scheduled messages: {e}")
-        return   
+        return scheduled_posts, exception_posts  
 
     spots_available = config.max_tg_buffer_size - scheduled_messages.count
     logger.info(f"Poster: Availiable spots: {max(0, spots_available)}/{config.max_tg_buffer_size}")
     if spots_available <= 0:
         logger.info(f"Poster: Skip task")
-        return
+        return scheduled_posts, exception_posts
 
     posts = await get_not_uploaded_posts(limit=spots_available)
     
     if not posts:
         logger.info(f"Poster: There is no posts in queue")
-        return
+        return scheduled_posts, exception_posts
     
     logger.info(f"Poster: get {len(posts)} from queue")
 
@@ -70,13 +72,19 @@ async def upload_posts_to_schedule():
             logger.info(f"Poster: SUCCESS post #{post['id']} for {post['publish_date']} -> TG ID: {tg_msg_id}")
             
             await update_post_tg_id(post['id'], tg_msg_id)
+
+            scheduled_posts.append(post)
             
         except Exception as e:
             logger.error(f"Poster: Failed to schedule post #{post['id']}: {e}")
+            
+            exception_posts.append(post)
         
         await asyncio.sleep(1) 
 
     logger.info(f"Poster: Done!")
+
+    return scheduled_posts, exception_posts
 
 def get_file_path(file_id: str):
     for root, dirs, files in os.walk(env.media_storage_path):

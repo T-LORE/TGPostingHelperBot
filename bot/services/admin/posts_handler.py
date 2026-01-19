@@ -5,7 +5,7 @@ from aiogram.types import Message
 from bot.misc.config import env, config
 from bot.misc.util import get_next_post_slot
 from bot.database.requests import delete_all_posts, delete_post, get_post, add_to_queue, get_tg_scheduled_posts, get_latest_posts
-from bot.services.schedule_poster import delete_posts_from_tg
+from bot.services.schedule_poster import delete_posts_from_tg, upload_posts_to_schedule
 
 MAX_FILE_SIZE = 20*1024*1024
 
@@ -100,3 +100,7 @@ async def delete_post_from_queue(post_id: int):
         return True
 
     return False
+
+async def update_tg_schedule():
+    posted, not_posted = await upload_posts_to_schedule()
+    return posted, not_posted
