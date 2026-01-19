@@ -11,9 +11,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.misc.states import AdminPanel
-from bot.misc.callbacks import AdminCB
+from bot.misc.callbacks import AdminCB, DeletePostCB
 import bot.windows.admin as window
 import bot.services.admin as service
+from bot.misc.util import parse_posts_from_message
 
 router = Router()
 
@@ -65,6 +66,47 @@ async def handle_media_content(message: Message, album: list[Message] = None):
     message_text, reply_markup  = await window.get_message_enqueue_answer(response["posts"])
 
     await message.reply(message_text, reply_markup=reply_markup)
+
+@router.callback_query(
+    StateFilter(AdminPanel.main_page, None),
+    DeletePostCB.filter(F.source == "mass_posting")
+)
+async def delete_from_view(callback: CallbackQuery, callback_data: DeletePostCB, state: FSMContext):
+    post_id = callback_data.id
+    
+    is_deleted = await service.delete_post_from_queue(post_id)
+
+    if not is_deleted:
+        await callback.answer("Не удалось удалить пост", show_alert=True)
+        return
+    
+    current_posts_list = parse_posts_from_message(callback.message)
+    
+    if not current_posts_list:
+        await callback.answer("Не удалось прочитать список постов из сообщения", show_alert=True)
+        return
+
+    post_found = False
+    for post in current_posts_list:
+        if post.get("post_id") == post_id:
+            post["status"] = "DELETED"
+            post_found = True
+            break
+    
+    if not post_found:
+        await callback.answer("Ошибка обновления списка (ID не найден в тексте)", show_alert=True)
+        return
+
+    message_text, reply_markup = await window.get_message_enqueue_answer(current_posts_list)
+    
+
+    await callback.message.edit_text(text=message_text, reply_markup=reply_markup)
+    
+    await callback.answer("Пост удален")
+    
+    
+    
+
 
 @router.callback_query(F.data == AdminCB.RETURN_MAIN)
 @router.callback_query(F.data == AdminCB.RETURN_MAIN_EDIT)

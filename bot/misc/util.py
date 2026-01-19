@@ -1,7 +1,9 @@
 import os
+import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo 
 
+from aiogram.types import Message
 from aiogram.types import Message, InlineKeyboardMarkup
 
 from bot.misc.config import config
@@ -58,3 +60,38 @@ async def send_post_media(message: Message, file_id: str, media_type: str, capti
         return await message.answer_animation(animation=file_id, caption=caption, reply_markup=reply_markup)
     else:
         raise Exception("Invalid media type")
+    
+def parse_posts_from_message(message: Message) -> list[dict]:
+    text = message.text or message.caption or ""
+    lines = text.split('\n')
+    
+    posts = []
+    
+    id_pattern = re.compile(r"#(\d+)")
+    
+    for line in lines:
+        match = id_pattern.search(line)
+        
+        if match:
+            post_id = int(match.group(1))
+            
+            if "✅" in line:
+                status = "OK"
+            elif "🗑" in line:
+                status = "DELETED"
+            else:
+                status = "UNKNOWN"
+
+            posts.append({
+                "post_id": post_id,
+                "status": status
+            })
+            
+        elif "❌" in line:
+            error_text = line.split(":", 1)[-1].strip() if ":" in line else "Unknown error"
+            posts.append({
+                "post_id": None,
+                "status": error_text
+            })
+            
+    return posts
