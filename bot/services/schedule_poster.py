@@ -122,6 +122,27 @@ async def delete_posts_from_tg(tg_message_ids: list[int]):
 
     return False
 
+async def is_tg_contain_post(message_id: int):
+    try:
+        channel_peer = await client.get_input_entity(env.channel_id)
+        scheduled_messages = await client(functions.messages.GetScheduledHistoryRequest(
+            peer=channel_peer,
+            hash=0
+        ))
+
+    except Exception as e:
+        logger.error(f"Poster: Error checking scheduled messages: {e}")
+        return False
+
+    for message in scheduled_messages.messages:
+        if message.id == message_id:
+            logger.info(f"Poster: Found message {message_id} in TG")
+            return True
+        
+    logger.info(f"Poster: Not found message {message_id} in TG")
+
+    return False
+
 async def clear_media_folder():
     all_files = os.listdir(env.media_storage_path)
     logger.info(f"Poster: Found {len(all_files)} files in media folder")
