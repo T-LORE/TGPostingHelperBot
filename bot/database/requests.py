@@ -92,7 +92,7 @@ async def update_post_tg_id(post_id: int, tg_message_id: int):
         )
         await db.commit()
 
-async def get_not_uploaded_posts(limit: int = 10):
+async def get_not_tg_scheduled_posts(limit: int = 10):
     async with aiosqlite.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
         db.row_factory = sqlite3.Row
         async with db.execute(
@@ -110,3 +110,13 @@ async def get_tg_scheduled_posts():
         ) as cursor:
             result = await cursor.fetchall()
             return None if result is None else result
+        
+async def get_not_published_posts():
+    now = datetime.datetime.now() + datetime.timedelta(minutes=5)
+    async with aiosqlite.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        db.row_factory = sqlite3.Row
+        async with db.execute(
+            "SELECT * FROM queue WHERE publish_date > ? OR (publish_date <= ? AND tg_message_id IS NULL) ORDER BY publish_date ASC",
+            (now, now)
+        ) as cursor:
+            return await cursor.fetchall()

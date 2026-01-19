@@ -8,7 +8,7 @@ from telethon.tl import types, functions
 from telethon.tl.custom.message import Message
 
 from bot.misc.config import env, config
-from bot.database.requests import get_not_uploaded_posts, update_post_tg_id
+from bot.database.requests import get_not_tg_scheduled_posts, update_post_tg_id, get_not_published_posts
 from bot.misc.util import convert_timezone
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,11 @@ async def stop_telethon():
     await client.disconnect()
 
 async def upload_posts_to_schedule():
+    logger.info("Poster: Clearing media folder...")
+    removed_files = await clear_media_folder()
+
+    logger.info(f"Poster: Removed {len(removed_files)} files")
+
     logger.info("Poster: Checking for new posts to schedule...")
     scheduled_posts = []
     exception_posts = []
@@ -45,7 +50,7 @@ async def upload_posts_to_schedule():
         logger.info(f"Poster: Skip task")
         return scheduled_posts, exception_posts
 
-    posts = await get_not_uploaded_posts(limit=spots_available)
+    posts = await get_not_tg_scheduled_posts(limit=spots_available)
     
     if not posts:
         logger.info(f"Poster: There is no posts in queue")
@@ -116,3 +121,26 @@ async def delete_posts_from_tg(tg_message_ids: list[int]):
         logger.error(f"Poster: Failed to delete messages from TG {tg_message_ids}: {e}")
 
     return False
+
+async def clear_media_folder():
+    all_files = os.listdir(env.media_storage_path)
+    logger.info(f"Poster: Found {len(all_files)} files in media folder")
+    necessary_files = []
+    removed_files = []
+
+    not_published_posts = await get_not_published_posts()
+    
+    if not_published_posts is None and len(not_published_posts) == 0:
+        return removed_files
+    
+    necessary_files = [post['file_id'] for post in not_published_posts]
+    necessary_files.append("DEFAULT MEDIA STORAGE")
+    
+    for file in all_files:
+        file_name = file.split(".")[0]
+        if file_name not in necessary_files:
+            logger.info(f"Poster: Remove file {file}")
+            removed_files.append(file)
+            os.remove(os.path.join(env.media_storage_path, file))
+
+    return removed_files
