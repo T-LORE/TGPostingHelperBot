@@ -7,6 +7,7 @@ from bot.misc.config import env, config
 from bot.misc.util import get_next_post_slot
 from bot.database.requests import delete_all_posts, delete_post, get_post, add_to_queue, get_tg_scheduled_posts, get_latest_posts
 from bot.services.schedule_poster import delete_posts_from_tg, upload_posts_to_schedule, is_tg_contain_post
+from bot.misc.util import processing_lock
 
 MAX_FILE_SIZE = 20*1024*1024
 
@@ -73,31 +74,32 @@ async def enqueue_messages_media_for_date(message: Message, publish_date: dateti
 
 
 async def enqueue_messages_media_by_timestamps(messages_list: list[Message]) -> dict:
-    response = {
-        "added_count": 0,
-        "posts": []
-    }
+    async with processing_lock:
+        response = {
+            "added_count": 0,
+            "posts": []
+        }
 
-    latest_posts = await get_latest_posts(start_post=0, posts_amount=1)
-    
-    if latest_posts and len(latest_posts) > 0:
-        current_cursor_date = latest_posts[0]['publish_date']
-    else:
-        current_cursor_date = datetime.now()
-
-    for msg in messages_list:
-        publish_date, caption = await get_next_post_slot(current_cursor_date)
+        latest_posts = await get_latest_posts(start_post=0, posts_amount=1)
         
-        current_cursor_date = publish_date
+        if latest_posts and len(latest_posts) > 0:
+            current_cursor_date = latest_posts[0]['publish_date']
+        else:
+            current_cursor_date = datetime.now()
 
-        post_result = await enqueue_messages_media_for_date(msg, publish_date, caption)
-        
-        if post_result['status'] == 'OK':
-            response['added_count'] += 1
+        for msg in messages_list:
+            publish_date, caption = await get_next_post_slot(current_cursor_date)
             
-        response["posts"].append(post_result)
+            current_cursor_date = publish_date
 
-    return response
+            post_result = await enqueue_messages_media_for_date(msg, publish_date, caption)
+            
+            if post_result['status'] == 'OK':
+                response['added_count'] += 1
+                
+            response["posts"].append(post_result)
+
+        return response
 
 async def delete_all_posts_from_queue():
     logger.info("Deleting all posts from queue...")
