@@ -1,12 +1,15 @@
 import os
 import re
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo 
+from zoneinfo import ZoneInfo
+import asyncio 
 
 from aiogram.types import Message
 from aiogram.types import Message, InlineKeyboardMarkup
 
 from bot.misc.config import config
+
+processing_lock = asyncio.Lock()
 
 def create_file_if_not_exist(path):
     if os.path.isfile(path):

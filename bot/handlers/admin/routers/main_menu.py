@@ -14,7 +14,7 @@ from bot.misc.states import AdminPanel
 from bot.misc.callbacks import AdminCB, DeletePostCB
 import bot.windows.admin as window
 import bot.services.admin as service
-from bot.misc.util import parse_posts_from_message
+from bot.misc.util import parse_posts_from_message, processing_lock
 
 router = Router()
 
@@ -61,7 +61,10 @@ async def update_tg_schedule(callback: CallbackQuery):
         )
 async def handle_media_content(message: Message, album: list[Message] = None):
     files_to_process = album if album else [message]
-    response = await service.enqueue_messages_media_by_timestamps(files_to_process)
+
+    async with processing_lock:
+        response = await service.enqueue_messages_media_by_timestamps(files_to_process)
+
 
     message_text, reply_markup  = await window.get_message_enqueue_answer(response["posts"])
 
