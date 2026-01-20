@@ -67,7 +67,7 @@ async def enqueue_messages_media_for_date(message: Message, publish_date: dateti
     if status != "OK":
         logger.info(f"Post do not added to queue with status {status}")
     else:
-        logger.info(f"Post {post_data['post_id']} added to queue with status {post_data['status']}")
+        logger.info(f"Post {post_data['post_id']} added to queue at date {publish_date} with status {post_data['status']}")
 
     return post_data
 
