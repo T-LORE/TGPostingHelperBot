@@ -59,7 +59,7 @@ async def add_post_from_queue_list(callback: CallbackQuery, state: FSMContext, c
         StateFilter(AdminPanel.add_post_for_date_page),
         F.photo | F.video | F.animation
         )
-async def handle_media_content(message: Message, state: FSMContext):
+async def handle_media_content(message: Message, album: list[Message], state: FSMContext):
     state_data = await state.get_data()
     day = state_data.get("day")
     month = state_data.get("month")
@@ -71,7 +71,12 @@ async def handle_media_content(message: Message, state: FSMContext):
     dt, caption = await get_next_post_slot(date - timedelta(seconds=1))
     
     post = await service.enqueue_messages_media_for_date(message, dt, caption)
-    message_text, reply_markup = await window.get_message_enqueue_answer([post])
+    posts_args = [post]
+    bad_statuses = []
+    if album is not None and len(album) >= 2:
+        bad_statuses = [{"status":"Недопустимо больше 1 медиафайла в сообщении"} for i in range(0, len(album)-1)]
+    posts_args += bad_statuses
+    message_text, reply_markup = await window.get_message_enqueue_answer(posts_args)
     await message.reply(message_text, reply_markup=reply_markup)
     if post["status"] == "OK":
         message_text, reply_markup = await window.get_post_queue_window(date)
