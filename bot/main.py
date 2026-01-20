@@ -10,6 +10,8 @@ from bot.handlers.admin import admin_router
 from bot.database import start_db
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from aiogram.fsm.strategy import FSMStrategy
+
 from bot.services.schedule_poster import start_telethon, stop_telethon, upload_posts_to_schedule
 from bot.misc.logger import configure_logger
 
@@ -22,7 +24,7 @@ async def start_bot():
             parse_mode=ParseMode.HTML
         )
     )
-    dp = Dispatcher()
+    dp = Dispatcher(fsm_strategy=FSMStrategy.CHAT)
 
     await start_db()
 
