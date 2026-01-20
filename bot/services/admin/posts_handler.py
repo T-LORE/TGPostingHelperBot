@@ -121,19 +121,22 @@ async def delete_post_from_queue(post_id: int):
 
     if post is None:
         logger.warning(f"Can't find post with id {post_id}")
-        return False
+        return False, "Post not found"
 
     if post['tg_message_id']:
         is_tg_contain = await is_tg_contain_post(post['tg_message_id'])
         if not is_tg_contain:
             logger.warning(f"Can't find post #{post_id} with message id #{post['tg_message_id']} in TG")
         else:
-            await delete_posts_from_tg([post['tg_message_id']])
+            is_deleted, error = await delete_posts_from_tg([post['tg_message_id']])
+            if not is_deleted:
+                logger.warning(f"Deleting post #{post_id} aborted with error: {error}")
+                return False, error
 
     
     await delete_post(post_id)
     logger.info(f"Post #{post_id} deleted from queue")
-    return True
+    return True, "OK"
 
 async def update_tg_schedule():
     posted, not_posted = await upload_posts_to_schedule()

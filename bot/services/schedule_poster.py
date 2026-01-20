@@ -100,7 +100,8 @@ def get_file_path(file_id: str):
 
 async def delete_posts_from_tg(tg_message_ids: list[int]):
     if not tg_message_ids:
-        return
+        logger.warning("Poster: There is no messages to delete")
+        return True, "Poster: There is no messages to delete"
 
     try:
         if not client.is_connected():
@@ -115,12 +116,12 @@ async def delete_posts_from_tg(tg_message_ids: list[int]):
         
         logger.info(f"Poster: TG deleted messages ids: {tg_message_ids} ")
         
-        return True
-        
+        return True, "OK"
+    
     except Exception as e:
         logger.error(f"Poster: Failed to delete messages from TG {tg_message_ids}: {e}")
 
-    return False
+        return False, e
 
 async def is_tg_contain_post(message_id: int):
     try:
