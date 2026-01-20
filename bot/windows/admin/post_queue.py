@@ -28,15 +28,15 @@ async def get_post_queue_window(date: datetime) -> tuple[str, InlineKeyboardMark
 
     # 🗓19 Января 2026 (Понедельник)
     day = date.day
-    month = format_date(date.date(), "MMMM", locale='ru')
+    month = format_date(date.date(), "MMMM", locale='ru').capitalize()
     year = date.year
-    weekday = format_date(date.date(), "EEEE", locale='ru')
-    date_text = f"🗓{day} {month} {year} ({weekday})"
+    weekday = format_date(date.date(), "EEEE", locale='ru').capitalize()
+    date_text = f"🗓<b>{day} {month} {year}</b> ({weekday})"
 
     # 📖Стр. 1 из 5 (Сегодня)
     day_representation = get_day_representation(date)
     day_representation = f"({day_representation})" if day_representation is not None else ""
-    page_text = f"📖Стр. {current_page} из {page_count} {day_representation}"
+    page_text = f"📖<i>Стр. {current_page} из {page_count}</i> {day_representation}"
 
     tables = get_tables_str(date, post_at_date)
     message_text = f"{date_text}\n{page_text}\n\n{tables}"
@@ -62,7 +62,14 @@ def get_buttons(target_date, not_published_posts, target_posts):
         callback_data=AdminCB.RETURN_MAIN_EDIT
     )
 
+    # off_schedule_empty_btn = InlineKeyboardButton(
+    #         text="─ ⚡️ Вне графика ⚡️ ─", 
+    #         callback_data="ignore"
+    #     )
+
     builder.attach(timestamp_posts_builder)
+    # if len(off_schedule_posts) > 0:
+    #     builder.row(off_schedule_empty_btn)
     builder.attach(off_schedule_posts_builder)
     builder.attach(nav_builder)
     builder.row(menu_btn)
@@ -189,9 +196,9 @@ def get_tables_str(target_date: datetime, posts):
 
     timestamp_table = create_timestamp_table(timestamps_posts, target_date)
     off_schedule_table = create_off_schedule_table(off_schedule_posts, target_date)
-    table_str = f"Основное расписание:\n{timestamp_table}"
+    table_str = f"<b>Основное расписание:</b>\n{timestamp_table}"
     if len(off_schedule_posts) > 0:
-        table_str += f"\n\n📌Вне графика:\n{off_schedule_table}"
+        table_str += f"\n\n📌<b>Вне графика:</b>\n{off_schedule_table}"
     return table_str
 
 def sort_posts_by_timestamps(posts):
@@ -262,21 +269,21 @@ def create_table_row(time: datetime, post_id: int, status: str):
     }
     
     if post_id is None:
-        post_id = normalize_str("-----", 10)
+        post_id = normalize_str("----", 6)
     else:
-        post_id = normalize_str(f"#{str(post_id)}", 10)
+        post_id = normalize_str(f"#{str(post_id)}", 6)
 
     status_data = STATUS_MAP[status] if status in STATUS_MAP else {"icon": "❓", "text": "Неизвестно"}
     
     time = time.strftime("%H:%M")
-    row = f"{time}|{post_id}|{status_data['icon']} {status_data['text']}\n"
+    row = f"<code>{time} </code>|<code> {post_id} </code>| {status_data['icon']} {status_data['text']}\n"
 
     return row
 
 def create_post_button(status, post_id : int = None, publish_date : datetime = None):
     if status == "expired":
         return [InlineKeyboardButton(
-            text=f"🗑 #{post_id}", 
+            text=f"🗑", 
             callback_data=DeletePostCB(
                 id=post_id, 
                 source="list", 
@@ -284,7 +291,7 @@ def create_post_button(status, post_id : int = None, publish_date : datetime = N
     
     elif status == "free":
         return [InlineKeyboardButton(
-            text=f"Добавить пост в {publish_date.strftime('%H:%M')}", 
+            text=f"➕ Занять слот {publish_date.strftime('%H:%M')}", 
             callback_data=AddPostCB(
                 day=publish_date.day,
                 month=publish_date.month,
@@ -296,12 +303,12 @@ def create_post_button(status, post_id : int = None, publish_date : datetime = N
     elif status == "tg_hold" or status == "db_hold":
         return [
             InlineKeyboardButton(
-                text=f"🔎 #{post_id}", 
+                text=f"{publish_date.strftime('%H:%M')}: 🔎", 
                 callback_data=ViewPostCB(
                     id=post_id, 
                     page=-1).pack()),
             InlineKeyboardButton(
-                text=f"🗑 #{post_id}", 
+                text=f"🗑", 
                 callback_data=DeletePostCB(
                     id=post_id,
                     page=-1,
@@ -311,7 +318,7 @@ def create_post_button(status, post_id : int = None, publish_date : datetime = N
     elif status == "posted":
         return [
             InlineKeyboardButton(
-                text=f"🔎 #{post_id}", 
+                text=f"{publish_date.strftime('%H:%M')}: 🔎", 
                 callback_data=ViewPostCB(
                     id=post_id, 
                     page=-1).pack())]
