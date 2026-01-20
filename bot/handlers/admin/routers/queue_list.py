@@ -2,9 +2,10 @@ from contextlib import suppress
 from datetime import datetime
 
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.filters import StateFilter
 
 from bot.misc.states import AdminPanel
 from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB, ViewPostCB, DateViewCB
@@ -166,4 +167,12 @@ async def view_post_close_btn_clicked(callback: CallbackQuery, state: FSMContext
 
     await state.update_data(opened_post_msg_id=None)
 
-    await callback.answer() 
+    await callback.answer()
+
+@router.message(
+        StateFilter(AdminPanel.post_queue_page),
+        F.photo | F.video | F.animation
+        )
+async def handle_media_content(message: Message, state: FSMContext):
+    message_text, reply_markup = await window.get_unknown_command_window()
+    await message.reply("Во время просмотра очереди нельзя загружать новые посты!", reply_markup=reply_markup)
