@@ -1,9 +1,11 @@
 import asyncio
 from typing import Any, Dict, Union, List, Callable, Awaitable
+import logging
 
 from aiogram import BaseMiddleware
 from aiogram.types import Message
 
+logger = logging.getLogger(__name__)
 
 class AlbumMiddleware(BaseMiddleware):
     def __init__(self, latency: Union[int, float] = 0.5):
@@ -22,7 +24,7 @@ class AlbumMiddleware(BaseMiddleware):
         group_id = event.media_group_id
         
         if group_id not in self.album_data:
-            print("Album detected!")
+            
             self.album_data[group_id] = []
             self.album_data[group_id].append(event)
             
@@ -34,6 +36,7 @@ class AlbumMiddleware(BaseMiddleware):
             data["album"] = my_album
             
             del self.album_data[group_id]
+            logger.info(f"Album with {len(data["album"])} elements detected in group_id {group_id}")
             return await handler(event, data)
 
         else:
