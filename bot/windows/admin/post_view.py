@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB
@@ -15,21 +17,27 @@ async def get_post_view_window(post_id: int, page: int) -> tuple[str, InlineKeyb
         "file_id": post_data["file_id"],
         "media_type": post_data["media_type"],
         "publish_date": post_data["publish_date"],
-        "markup": get_buttons_markup(post_id, page)
+        "markup": get_buttons_markup(post_id, post_data["publish_date"], post_data["tg_message_id"], page),
     } 
 
-def get_buttons_markup(post_id: int, page: int = 1):
+def get_buttons_markup(post_id: int, publish_date: datetime, tg_message_id: int, page: int = 1):
     builder = InlineKeyboardBuilder()
-   
+    row = []
+
     back_btn = InlineKeyboardButton(
             text="Закрыть пост",
             callback_data=AdminCB.CLOSE_POST
         )
+    is_posted = tg_message_id is not None and publish_date <= datetime.now()
+    
     delete_btn = InlineKeyboardButton(
             text="Удалить пост",
             callback_data=DeletePostCB(id=post_id, page=page, source="view").pack()
         )
-    row = [back_btn, delete_btn]
+    
+    row.append(back_btn)
+    if not is_posted:
+        row.append(delete_btn)
 
     builder.row(*row)
 
