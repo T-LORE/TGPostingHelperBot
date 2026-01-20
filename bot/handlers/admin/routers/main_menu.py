@@ -61,7 +61,7 @@ async def update_tg_schedule(callback: CallbackQuery):
         )
 async def handle_media_content(message: Message, album: list[Message] = None):
     files_to_process = album if album else [message]
-    response = await service.enqueue_messages_media(files_to_process)
+    response = await service.enqueue_messages_media_by_timestamps(files_to_process)
 
     message_text, reply_markup  = await window.get_message_enqueue_answer(response["posts"])
 

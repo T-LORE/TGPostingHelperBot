@@ -12,66 +12,90 @@ MAX_FILE_SIZE = 20*1024*1024
 
 logger = logging.getLogger(__name__)
 
-async def enqueue_messages_media(messages_list: list[Message]):
+async def _process_and_download_media(message: Message) -> tuple[str | None, str | None, str]:
+    file_obj = None
+    media_type = None
+    extension = ""
+
+    if message.photo:
+        file_obj = message.photo[-1]
+        media_type = 'photo'
+        extension = "jpg"
+    elif message.video:
+        file_obj = message.video
+        media_type = 'video'
+        extension = "mp4"
+    elif message.animation:
+        file_obj = message.animation
+        media_type = 'animation'
+        extension = "gif"
+    else:
+        return None, None, "Unsupported media type"
+
+    if file_obj.file_size > MAX_FILE_SIZE:
+        return None, None, "File too big!"
+
+    try:
+        await message.bot.download(
+            file_obj,
+            destination=f"{env.media_storage_path}/{file_obj.file_id}.{extension}"
+        )
+    except Exception as e:
+        logger.error(f"Download failed: {e}")
+        return None, None, "Download failed"
+
+    return file_obj.file_id, media_type, "OK"
+
+
+async def enqueue_messages_media_for_date(message: Message, publish_date: datetime, caption: str) -> dict:
+    file_id, media_type, status = await _process_and_download_media(message)
+
+    post_data = {
+        "post_id": -1,
+        "status": status
+    }
+
+    if file_id:
+        post_id = await add_to_queue(
+            file_id=file_id, 
+            caption=caption, 
+            media_type=media_type, 
+            publish_date=publish_date
+        )
+        post_data['post_id'] = post_id
+    
+    if status != "OK":
+        logger.info(f"Post do not added to queue with status {status}")
+    else:
+        logger.info(f"Post {post_data['post_id']} added to queue with status {post_data['status']}")
+
+    return post_data
+
+
+async def enqueue_messages_media_by_timestamps(messages_list: list[Message]) -> dict:
     response = {
         "added_count": 0,
         "posts": []
     }
 
-    lastest_post = await get_latest_posts(start_post=0, posts_amount=1)
-    lastest_post_datetime = datetime.now()
-
-    if lastest_post is not None and len(lastest_post) > 0:
-        lastest_post_datetime = lastest_post[0]['publish_date']
+    latest_posts = await get_latest_posts(start_post=0, posts_amount=1)
+    
+    if latest_posts and len(latest_posts) > 0:
+        current_cursor_date = latest_posts[0]['publish_date']
+    else:
+        current_cursor_date = datetime.now()
 
     for msg in messages_list:
-        file_id = None
-        media_type = 'photo'
-        post = {
-            "post_id": -1,
-            "status": ""
-        }
-        publish_date, caption = await get_next_post_slot(lastest_post_datetime)
+        publish_date, caption = await get_next_post_slot(current_cursor_date)
+        
+        current_cursor_date = publish_date
 
-        if msg.photo:
-            if msg.photo[-1].file_size > MAX_FILE_SIZE:
-                post['status']= "File too big!"
-            else:
-                file_id = msg.photo[-1].file_id
-                await msg.bot.download(
-                    msg.photo[-1],
-                    destination=f"{env.media_storage_path}/{file_id}.jpg"
-                )
-                media_type = 'photo'
-        elif msg.video:
-            if msg.video.file_size > MAX_FILE_SIZE:
-                post['status']= "File too big!"
-            else:
-                file_id = msg.video.file_id
-                await msg.bot.download(
-                    msg.video,
-                    destination=f"{env.media_storage_path}/{file_id}.mp4"
-                )
-                media_type = 'video'
-        elif msg.animation:
-            if msg.animation.file_size > MAX_FILE_SIZE:
-                post['status']= "File too big!"
-            else:
-                file_id = msg.animation.file_id
-                await msg.bot.download(
-                    msg.animation,
-                    destination=f"{env.media_storage_path}/{file_id}.gif"
-                )
-                media_type = 'animation'
-          
-        if file_id:
-            post_id = await add_to_queue(file_id=file_id, caption=caption, media_type=media_type, publish_date=publish_date)
-            post['status'] = 'OK'
-            post['post_id'] = post_id
+        post_result = await enqueue_messages_media_for_date(msg, publish_date, caption)
+        
+        if post_result['status'] == 'OK':
             response['added_count'] += 1
-
-        response["posts"].append(post)
-
+            
+        response["posts"].append(post_result)
 
     return response
 
