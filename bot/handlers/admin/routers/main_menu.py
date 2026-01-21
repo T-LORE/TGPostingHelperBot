@@ -76,10 +76,10 @@ async def handle_media_content(message: Message, album: list[Message] = None):
 async def delete_from_view(callback: CallbackQuery, callback_data: DeletePostCB, state: FSMContext):
     post_id = callback_data.id
     
-    is_deleted, error = await service.delete_post_from_queue(post_id)
+    res, error = await service.delete_post_from_queue(post_id)
 
-    if not is_deleted:
-        await callback.answer(f"Не удалось удалить пост из-за ошибки: {error} ", show_alert=True)
+    if res['status'] != 'DELETED':
+        await callback.answer(f"Не удалось удалить пост из-за ошибки: {res['status']} ", show_alert=True)
         return
     
     current_posts_list = parse_posts_from_message(callback.message)

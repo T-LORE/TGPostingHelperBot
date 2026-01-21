@@ -98,10 +98,60 @@ def get_file_path(file_id: str):
                 return os.path.join(root, file)
     return None
 
-async def delete_posts_from_tg(tg_message_ids: list[int]):
+async def delete_posts_from_tg(posts: list) -> list[dict]:
+    tg_map = {}
+    tg_ids_to_delete = []
+    final_report = []
+
+    for post in posts:
+        tg_id = post['tg_message_id']
+        db_id = post['id']
+
+        if tg_id:
+            tg_map[tg_id] = db_id
+            tg_ids_to_delete.append(tg_id)
+        else:
+            final_report.append({
+                "post_id": db_id,
+                "tg_id": None,
+                "status": "DELETED", 
+            })
+
+    if len(tg_ids_to_delete) == 0:
+        if len(final_report) > 0:
+            logger.warning("Poster: provided posts are already deleted from telegram")
+        else:
+            logger.warning("Poster: provided posts are empty")
+        return final_report
+    
+    result = await delete_messages_from_tg(tg_ids_to_delete)
+
+    for msg_res in result:
+        tg_id = msg_res['tg_message_id']
+        status = msg_res['status']
+        
+        db_post_id = tg_map.get(tg_id)
+
+        if status == 'DELETED':
+            await update_post_tg_id(db_post_id, None)
+        else:
+            logger.warning(f"Poster: Failed to delete scheduled post #{db_post_id} with message id #{tg_id} from TG")
+
+        final_report.append({
+            "post_id": db_post_id,
+            "tg_id": tg_id,
+            "status": status
+        })
+
+    return final_report
+
+async def delete_messages_from_tg(tg_message_ids: list[int]) -> list[dict]:
+
+    result = []
+
     if not tg_message_ids:
-        logger.warning("Poster: There is no messages to delete")
-        return True, "Poster: There is no messages to delete"
+        logger.warning("Poster: No messages provided to delete")
+        return result
 
     try:
         if not client.is_connected():
@@ -109,19 +159,45 @@ async def delete_posts_from_tg(tg_message_ids: list[int]):
 
         channel_peer = await client.get_input_entity(env.channel_id)
 
-        result = await client(functions.messages.DeleteScheduledMessagesRequest(
+        api_result = await client(functions.messages.DeleteScheduledMessagesRequest(
             peer=channel_peer,
             id=tg_message_ids
         ))
+        logger.debug(f"Poster: Delete result: {api_result}")
+        actually_deleted_ids = set()
         
-        logger.warning(f"Poster: TG deleted messages ids: {tg_message_ids} result {result}")
+        if hasattr(api_result, 'updates'):
+            for update in api_result.updates:
+                if isinstance(update, types.UpdateDeleteScheduledMessages):
+                    actually_deleted_ids.update(update.messages)
         
-        return True, "OK"
-    
-    except Exception as e:
-        logger.error(f"Poster: Failed to delete messages from TG {tg_message_ids}: {e}")
+        for msg_id in tg_message_ids:
+            msg_report = {
+                "tg_message_id": msg_id,
+                "status": "UNKNOWN",
+            }
+            
+            if msg_id in actually_deleted_ids:
+                msg_report["status"] = "DELETED"
+            else:
+                msg_report["status"] = "NOT_DELETED"
+                logger.warning(f"Poster: Message {msg_id} not deleted")
+            
+            result.append(msg_report)
 
-        return False, e
+        logger.info(f"Poster: Batch delete result: {len(actually_deleted_ids)}/{len(tg_message_ids)} deleted.")
+        return result
+
+    except Exception as e:
+        logger.error(f"Poster: Global error during batch delete: {e}")
+        
+        for msg_id in tg_message_ids:
+           result.append({
+                "tg_message_id": msg_id,
+                "status": str(e),
+            })
+            
+        return result
 
 async def is_tg_contain_post(message_id: int):
     try:

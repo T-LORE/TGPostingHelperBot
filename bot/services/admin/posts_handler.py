@@ -103,41 +103,54 @@ async def enqueue_messages_media_by_timestamps(messages_list: list[Message]) -> 
 
 async def delete_all_posts_from_queue():
     logger.info("Deleting all posts from queue...")
+    
+    async with processing_lock: 
+        posts = await get_tg_scheduled_posts()
 
-    posts = await get_tg_scheduled_posts()
-    if posts is None or len(posts) == 0:
-        logger.info("No posts to delete from TG")
-    else:
-        ids = [post['tg_message_id'] for post in posts]
-        await delete_posts_from_tg(ids)
+        if posts is None or len(posts) == 0:
+            logger.info("Nothing to delete")
+            return []
 
-    await delete_all_posts()
-    logger.info("All posts deleted from queue")
-    return True
+    res = await delete_posts(posts)
+    
+    return res
 
 async def delete_post_from_queue(post_id: int):
     logger.info(f"Deleting post #{post_id} from queue...")
-    post = await get_post(post_id)
-
-    if post is None:
-        logger.warning(f"Can't find post with id {post_id}")
-        return False, "Post not found"
-
-    if post['tg_message_id']:
-        is_tg_contain = await is_tg_contain_post(post['tg_message_id'])
-        if not is_tg_contain:
-            logger.warning(f"Can't find post #{post_id} with message id #{post['tg_message_id']} in TG")
-        else:
-            is_deleted, error = await delete_posts_from_tg([post['tg_message_id']])
-            if not is_deleted:
-                logger.warning(f"Deleting post #{post_id} aborted with error: {error}")
-                return False, error
-
     
-    await delete_post(post_id)
-    logger.info(f"Post #{post_id} deleted from queue")
-    return True, "OK"
+    async with processing_lock: 
+        post = await get_post(post_id)
+
+        if post is None:
+            logger.warning(f"Can't find post with id {post_id}")
+            return False, "Post not found"
+
+    res = await delete_posts([post])
+
+    return res[0]
+
+async def delete_posts(posts):
+ 
+    logger.info(f"Deleting {len(posts)} posts from queue...")
+
+    response = []
+    posts_response = await delete_posts_from_tg(posts)
+
+    async with processing_lock: 
+        for post_response in posts_response:
+            response.append(post_response)
+            if post_response["status"] == 'DELETED':
+                await delete_post(post_response["post_id"])
+                logger.info(f"Post #{post_response['post_id']} deleted from queue")
+            else:
+                logger.warning(f"Deleting post #{post_response['post_id']} aborted with status: {post_response['status']}")
+        
+    logger.debug(f"Deleting result: {response} ")
+
+    return response
+
 
 async def update_tg_schedule():
-    posted, not_posted = await upload_posts_to_schedule()
-    return posted, not_posted
+    async with processing_lock:
+        posted, not_posted = await upload_posts_to_schedule()
+        return posted, not_posted

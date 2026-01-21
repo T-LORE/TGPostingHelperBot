@@ -60,10 +60,10 @@ async def delete_from_list(callback: CallbackQuery, callback_data: DeletePostCB,
         date = post["publish_date"]
 
 
-    is_deleted, error = await service.delete_post_from_queue(post_id)
+    res = await service.delete_post_from_queue(post_id)
 
-    if not is_deleted:
-        await callback.answer(f"Не удалось удалить пост из-за ошибки: {error}", show_alert=True)
+    if res['status'] != 'DELETED':
+        await callback.answer(f"Не удалось удалить пост из-за ошибки: {res['status']}", show_alert=True)
         return
 
     state_data = await state.get_data()
@@ -96,10 +96,10 @@ async def delete_from_view(callback: CallbackQuery, callback_data: DeletePostCB,
     if post is not None:
         date = post["publish_date"]
 
-    is_deleted, error = await service.delete_post_from_queue(post_id)
+    res = await service.delete_post_from_queue(post_id)
 
-    if not is_deleted:
-        await callback.answer(f"Не удалось удалить пост из-за ошибки: {error}", show_alert=True)
+    if res['status'] != 'DELETED':
+        await callback.answer(f"Не удалось удалить пост из-за ошибки: {res['status']}", show_alert=True)
         return
 
     await state.update_data(opened_post_msg_id=None, opened_post_id=None)

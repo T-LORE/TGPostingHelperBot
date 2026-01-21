@@ -30,12 +30,17 @@ async def delete_all_posts_confirmation(callback: CallbackQuery, state: FSMConte
         F.data == AdminCB.DELETE_ALL
         )
 async def delete_all_posts(callback: CallbackQuery, state: FSMContext):
-    await service.delete_all_posts_from_queue()
+    results = await service.delete_all_posts_from_queue()
+
     message_text, reply_markup = await window.get_main_menu_window()
     
     with suppress(TelegramBadRequest):
         await callback.message.edit_text(message_text, reply_markup=reply_markup)
 
     await state.set_state(AdminPanel.main_page)
-    
-    await callback.answer("Все посты были удалены!", show_alert=True)
+
+    is_positive = all([res['status'] == 'DELETED' for res in results])
+    if not is_positive:
+        await callback.answer(f"Не удалось удалить все посты", show_alert=True)
+    else:
+        await callback.answer("Все посты были удалены!", show_alert=True)
