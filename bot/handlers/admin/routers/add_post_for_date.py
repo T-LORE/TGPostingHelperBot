@@ -59,7 +59,7 @@ async def add_post_from_queue_list(callback: CallbackQuery, state: FSMContext, c
         StateFilter(AdminPanel.add_post_for_date_page),
         F.photo | F.video | F.animation
         )
-async def handle_media_content(message: Message, album: list[Message], state: FSMContext):
+async def handle_media_content(message: Message, state: FSMContext, album: list[Message] = None ):
     state_data = await state.get_data()
     day = state_data.get("day")
     month = state_data.get("month")
