@@ -34,7 +34,7 @@ async def get_post_queue_window(date: datetime) -> tuple[str, InlineKeyboardMark
     date_text = f"🗓<b>{day} {month} {year}</b> ({weekday})"
 
     # 📖Стр. 1 из 5 (Сегодня)
-    day_representation = get_day_representation(date)
+    day_representation = get_human_date_str(date)
     day_representation = f"({day_representation})" if day_representation is not None else ""
     page_text = f"📖<i>Стр. {current_page} из {page_count}</i> {day_representation}"
 
@@ -139,16 +139,21 @@ def get_builder_for_off_scheduled_posts(posts, target_date: datetime):
             builder.row(*btn)
     return builder 
 
-def get_day_representation(date: datetime):
-    if date.day == datetime.now().day:
+def get_human_date_str(dt: datetime) -> str:
+    now_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    target_date = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    delta_days = (target_date - now_date).days
+    
+    if delta_days == 0:
         return "Сегодня"
-    elif date.day == datetime.now().day + 1:
+    elif delta_days == 1:
         return "Завтра"
-    elif date.day == datetime.now().day + 2:
+    elif delta_days == 2:
         return "Послезавтра"
-    elif date.day == datetime.now().day - 1:
+    elif delta_days == -1:
         return "Вчера"
-    elif date.day == datetime.now().day - 2:
+    elif delta_days == -2:
         return "Позавчера"
     else:
         return None
