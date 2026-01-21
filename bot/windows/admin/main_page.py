@@ -21,7 +21,7 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
     expired_message = f"⛔️ ПРОСРОЧЕНО: {len(expired_posts)}\n" if len(expired_posts) > 0 else ""
 
     order_failure_posts = get_tg_order_failure_posts(not_published_posts)
-    order_failure_message = f"📉 Сбой порядка в отложке TG\n(Нужно обновить отложку)\n" if len(order_failure_posts) > 0 else ""
+    order_failure_message = f"⛔️ Сбой порядка в отложке TG\n(Нужно обновить отложку)\n" if len(order_failure_posts) > 0 else ""
     
     actual_post_in_tg_count = await get_scheduled_messages_count()
     db_post_in_tg = get_posts_in_tg_schedule(not_published_posts)
