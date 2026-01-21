@@ -109,12 +109,12 @@ async def delete_posts_from_tg(tg_message_ids: list[int]):
 
         channel_peer = await client.get_input_entity(env.channel_id)
 
-        await client(functions.messages.DeleteScheduledMessagesRequest(
+        result = await client(functions.messages.DeleteScheduledMessagesRequest(
             peer=channel_peer,
             id=tg_message_ids
         ))
         
-        logger.info(f"Poster: TG deleted messages ids: {tg_message_ids} ")
+        logger.warning(f"Poster: TG deleted messages ids: {tg_message_ids} result {result}")
         
         return True, "OK"
     
