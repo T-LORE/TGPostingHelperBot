@@ -26,7 +26,7 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
     actual_post_in_tg_count = await get_scheduled_messages_count()
     db_post_in_tg = get_posts_in_tg_schedule(not_published_posts)
     db_post_in_tg_count = len(db_post_in_tg)
-    tg_desync_error = f"⚠️ Возможная ошибка - кол-во постов в отложке телеграмма не совпадает с информацией очереди: {actual_post_in_tg_count}/{db_post_in_tg_count}\n"
+    tg_desync_error = f"⚠️ Возможная ошибка - кол-во постов в отложке телеграмма не совпадает с информацией очереди: {actual_post_in_tg_count}/{db_post_in_tg_count}\n" if db_post_in_tg_count != actual_post_in_tg_count else ""
 
     warning_message = "🟢 ГЛАВНАЯ СТРАНИЦА\n"
     if len(expired_posts) > 0 or len(order_failure_posts) > 0 or db_post_in_tg_count != actual_post_in_tg_count:
