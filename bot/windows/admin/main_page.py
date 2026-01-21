@@ -9,6 +9,7 @@ from bot.misc.callbacks import AdminCB
 from bot.database.requests import get_queue_count, get_not_published_posts
 from bot.misc.config import config, env
 from bot.misc.util import get_next_free_slots
+from bot.services.schedule_poster import get_scheduled_messages_count
 
 FREE_SLOTS_AMOUNT = 3
 FREE_SLOTS_DAYS_CHECK = 30
@@ -22,9 +23,14 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
     order_failure_posts = get_tg_order_failure_posts(not_published_posts)
     order_failure_message = f"📉 Сбой порядка в отложке TG\n(Нужно обновить отложку)\n" if len(order_failure_posts) > 0 else ""
     
+    actual_post_in_tg_count = await get_scheduled_messages_count()
+    db_post_in_tg = get_posts_in_tg_schedule(not_published_posts)
+    db_post_in_tg_count = len(db_post_in_tg)
+    tg_desync_error = f"⚠️ Возможная ошибка - кол-во постов в отложке телеграмма не совпадает с информацией очереди: {actual_post_in_tg_count}/{db_post_in_tg_count}\n"
+
     warning_message = "🟢 ГЛАВНАЯ СТРАНИЦА\n"
-    if len(expired_posts) > 0 or len(order_failure_posts) > 0:
-        warning_message = f"🔴 ВНИМАНИЕ! 🔴\n\n{expired_message}{order_failure_message}"
+    if len(expired_posts) > 0 or len(order_failure_posts) > 0 or db_post_in_tg_count != actual_post_in_tg_count:
+        warning_message = f"🔴 ВНИМАНИЕ! 🔴\n\n{expired_message}{order_failure_message}{tg_desync_error}"
 
     admin_message = f"👤Админ:{get_admin_poster_name()} | 📢Канал: {get_group_name()}\n"
 
@@ -80,6 +86,16 @@ def get_expired_posts(posts):
             expired_posts.append(post)
 
     return expired_posts
+
+def get_posts_in_tg_schedule(not_published_posts):
+    future_posts = [p for p in not_published_posts if p["publish_date"] > datetime.now()]
+    posts_in_schedule = []
+
+    for post in future_posts:
+        if post["tg_message_id"] is not None:
+            posts_in_schedule.append(post)
+
+    return posts_in_schedule
 
 def get_tg_order_failure_posts(not_published_posts):
     future_posts = [p for p in not_published_posts if p["publish_date"] > datetime.now()]

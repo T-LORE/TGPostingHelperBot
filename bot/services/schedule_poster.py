@@ -242,3 +242,16 @@ async def clear_media_folder():
             os.remove(os.path.join(env.media_storage_path, file))
 
     return removed_files
+
+# TODO: cache
+async def get_scheduled_messages_count():
+    try:
+        channel_peer = await client.get_input_entity(env.channel_id)
+        scheduled_messages = await client(functions.messages.GetScheduledHistoryRequest(
+            peer=channel_peer,
+            hash=0
+        ))
+        return scheduled_messages.count
+    except Exception as e:
+        logger.error(f"Poster: Error checking scheduled messages: {e}")
+        return -1
