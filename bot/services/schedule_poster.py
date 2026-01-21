@@ -63,7 +63,7 @@ async def upload_posts_to_schedule():
             logger.info(f"Poster: process post #{post['id']} for {post['publish_date']}")
             if post['publish_date'] < datetime.datetime.now():
                 logger.warning(f"Poster: post #{post['id']} skipped his publish date: {post['publish_date']}!")
-                pass
+                continue
             
             sent_message = await client.send_message(
                 entity=channel_peer,
