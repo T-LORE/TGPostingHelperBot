@@ -8,6 +8,7 @@ from aiogram.types import Message
 from aiogram.types import Message, InlineKeyboardMarkup
 
 from bot.misc.config import config
+from bot.database.requests import get_post_by_day
 
 processing_lock = asyncio.Lock()
 
@@ -98,3 +99,38 @@ def parse_posts_from_message(message: Message) -> list[dict]:
             })
             
     return posts
+
+async def get_next_free_slots(limit: int = 3, next_days: int = 30, start_datetime: datetime = datetime.now()) -> list[datetime]:
+    found_slots = []
+    
+    schedule_times = sorted([
+        datetime.strptime(slot.time, "%H:%M").time() 
+        for slot in config.post_timestamps
+    ])
+    
+    if not schedule_times:
+        return []
+
+    check_date = start_datetime.combine(start_datetime, datetime.min.time())
+    
+    for _ in range(next_days): 
+        day = check_date
+        
+        posts = await get_post_by_day(day)
+        post_dates = [post["publish_date"] for post in posts]
+
+        for time_obj in schedule_times:
+            slot_dt = datetime.combine(check_date, time_obj)
+            
+            if slot_dt <= datetime.now():
+                continue
+            
+            if slot_dt not in post_dates:
+                found_slots.append(slot_dt)
+                
+                if len(found_slots) >= limit:
+                    return found_slots
+        
+        check_date += timedelta(days=1)
+
+    return found_slots
