@@ -151,6 +151,5 @@ async def delete_posts(posts):
 
 
 async def update_tg_schedule():
-    async with processing_lock:
-        posted, not_posted = await upload_posts_to_schedule()
-        return posted, not_posted
+    res = await upload_posts_to_schedule()
+    return res

@@ -47,13 +47,11 @@ async def update_tg_schedule(callback: CallbackQuery):
     with suppress(TelegramBadRequest):
         await callback.message.edit_text("Обновление отложки...")
     
-    posted, not_posted = await service.update_tg_schedule()
+    res = await service.update_tg_schedule()
 
-    builder = InlineKeyboardBuilder()
-    return_btn = InlineKeyboardButton(text="Вернуться на главную", callback_data=AdminCB.RETURN_MAIN_EDIT),
-    builder.row(*return_btn)
+    message_text, reply_markup = await window.get_tg_scheduled_task_answer(res['status'], [*res['scheduled_posts'], *res['exception_posts'], *res['removed_posts'], *res['skipped_posts']])
 
-    await callback.message.edit_text(f"Обновление завершено: {len(posted)} постов отправлено, {len(not_posted)} не отправлено", reply_markup=builder.as_markup())
+    await callback.message.edit_text(text=message_text, reply_markup=reply_markup)
 
 @router.message(
         StateFilter(AdminPanel.main_page, None),

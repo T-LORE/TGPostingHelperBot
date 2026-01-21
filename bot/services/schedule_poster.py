@@ -6,6 +6,7 @@ import os
 from telethon import TelegramClient
 from telethon.tl import types, functions
 from telethon.tl.custom.message import Message
+from telethon.errors import FloodWaitError
 
 from bot.misc.config import env, config
 from bot.database.requests import get_not_tg_scheduled_posts, update_post_tg_id, get_not_published_posts
@@ -29,8 +30,13 @@ async def upload_posts_to_schedule():
     logger.info(f"Poster: Removed {len(removed_files)} files")
 
     logger.info("Poster: Checking for new posts to schedule...")
-    scheduled_posts = []
-    exception_posts = []
+    response = {
+        "status": "UNKNOWN",
+        "scheduled_posts": [],
+        "exception_posts": [],
+        "removed_posts": [],
+        "skipped_posts": []
+    }
 
     try:
         channel_peer = await client.get_input_entity(env.channel_id)
@@ -38,31 +44,40 @@ async def upload_posts_to_schedule():
             peer=channel_peer, # PeerChanndel(id)
             hash=0
         ))
-        # logger.info("\n" + scheduled_messages.stringify())
+        logger.debug("\n" + scheduled_messages.stringify())
         logger.info(f"Poster: current scheduled posts: {scheduled_messages.count}")
     except Exception as e:
         logger.error(f"Poster: Error checking scheduled messages: {e}")
-        return scheduled_posts, exception_posts  
+        response["status"] = f"{str(e)}"
+        return response
 
     spots_available = config.max_tg_buffer_size - scheduled_messages.count
     logger.info(f"Poster: Availiable spots: {max(0, spots_available)}/{config.max_tg_buffer_size}")
     if spots_available <= 0:
         logger.info(f"Poster: Skip task")
-        return scheduled_posts, exception_posts
+        response["status"] = "SKIP_NO_SPOTS"
+        return response
 
     posts = await get_not_tg_scheduled_posts(limit=spots_available)
     
     if not posts:
         logger.info(f"Poster: There is no posts in queue")
-        return scheduled_posts, exception_posts
+        response["status"] = "SKIP_NO_POSTS"
+        return response
     
     logger.info(f"Poster: get {len(posts)} from queue")
 
     for post in posts:
         try:
+            post_response ={
+                "id": post['id'],
+                "status": "UNKNOWN"
+            }
             logger.info(f"Poster: process post #{post['id']} for {post['publish_date']}")
             if post['publish_date'] < datetime.datetime.now():
-                logger.warning(f"Poster: post #{post['id']} skipped his publish date: {post['publish_date']}!")
+                logger.warning(f"Poster: post #{post['id']} skipped his publish date: {post['publish_date']}!")               
+                post_response["status"] = "EXPIRED"
+                response["skipped_posts"].append(post_response)
                 continue
             
             sent_message = await client.send_message(
@@ -78,18 +93,26 @@ async def upload_posts_to_schedule():
             
             await update_post_tg_id(post['id'], tg_msg_id)
 
-            scheduled_posts.append(post)
-            
+            post_response["status"] = "SCHEDULED"
+            response["scheduled_posts"].append(post_response)
+        
+        except FloodWaitError as e:
+            logger.error(f"Poster: Failed to schedule post #{post['id']}, flood wait: {e.seconds}")
+            post_response["status"] = f"FLOOD_WAIT_{e.seconds}"
+            response["exception_posts"].append(post_response)
+
         except Exception as e:
-            logger.error(f"Poster: Failed to schedule post #{post['id']}: {e}")
-            
-            exception_posts.append(post)
+            logger.error(f"Poster: Failed to schedule post #{post['id']}: {e}") 
+            post_response["status"] = f"{str(e)}"
+            response["exception_posts"].append(post_response)
         
         await asyncio.sleep(1) 
 
     logger.info(f"Poster: Done!")
 
-    return scheduled_posts, exception_posts
+    response["status"] = "OK"
+
+    return response
 
 def get_file_path(file_id: str):
     for root, dirs, files in os.walk(env.media_storage_path):
