@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from bot.misc.callbacks import AdminCB, NavigationCB, DeletePostCB, ViewPostCB, DateViewCB, AddPostCB
 
-from bot.database.requests import get_queue_count, get_earliest_posts, get_post_by_day, get_not_published_posts
+from bot.database.requests import get_queue_count, get_post_by_day, get_not_published_posts
 from bot.misc.config import config
 
 logger = logging.getLogger(__name__)

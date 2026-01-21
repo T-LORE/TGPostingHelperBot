@@ -5,7 +5,7 @@ from aiogram.types import Message
 
 from bot.misc.config import env, config
 from bot.misc.util import get_next_post_slot
-from bot.database.requests import delete_all_posts, delete_post, get_post, add_to_queue, get_tg_scheduled_posts, get_latest_posts
+from bot.database.requests import delete_all_posts, delete_post, get_post, add_to_queue, get_tg_scheduled_posts, get_not_published_posts
 from bot.services.schedule_poster import delete_posts_from_tg, upload_posts_to_schedule, is_tg_contain_post
 from bot.misc.util import processing_lock
 
@@ -80,12 +80,12 @@ async def enqueue_messages_media_by_timestamps(messages_list: list[Message]) -> 
             "posts": []
         }
 
-        latest_posts = await get_latest_posts(start_post=0, posts_amount=1)
-        
-        if latest_posts and len(latest_posts) > 0:
-            current_cursor_date = latest_posts[0]['publish_date']
-        else:
-            current_cursor_date = datetime.now()
+        not_published_posts = await get_not_published_posts()
+        current_cursor_date = datetime.now()
+
+        if not_published_posts and len(not_published_posts) > 0:
+            if not_published_posts[-1]["publish_date"] > datetime.now():
+                current_cursor_date = not_published_posts[-1]["publish_date"]   
 
         for msg in messages_list:
             publish_date, caption = await get_next_post_slot(current_cursor_date)

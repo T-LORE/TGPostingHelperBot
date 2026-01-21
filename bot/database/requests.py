@@ -37,30 +37,6 @@ async def get_queue_count():
             count = await cursor.fetchone()
             return count[0]
 
-async def get_latest_posts(start_post: int = 0, posts_amount: int = 1):
-    async with aiosqlite.connect(db_path,
-                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
-        db.row_factory = sqlite3.Row
-
-        async with db.execute(
-            "SELECT * FROM queue ORDER BY publish_date DESC LIMIT ? OFFSET ?",
-            (posts_amount, start_post)
-        ) as cursor:
-            posts = await cursor.fetchall()
-            return posts
-
-async def get_earliest_posts(start_post: int = 0, posts_amount: int = 1):
-    async with aiosqlite.connect(db_path,
-                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
-        db.row_factory = sqlite3.Row
-
-        async with db.execute(
-            "SELECT * FROM queue ORDER BY publish_date ASC LIMIT ? OFFSET ?",
-            (posts_amount, start_post)
-        ) as cursor:
-            posts = await cursor.fetchall()
-            return posts
-
 async def delete_all_posts():
     async with aiosqlite.connect(db_path,
                                  detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
