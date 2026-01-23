@@ -1,0 +1,22 @@
+{
+    "max_tg_buffer_size": 10,
+    "timezone": "Europe/Moscow",
+    "post_timestamps": [
+        {
+            "time": "8:00",
+            "caption": "Доброе утречко!\n\n<a href=\"https://t.me/\">Канал</a>"
+        },
+        {
+            "time": "9:00",
+            "caption": "<a href=\"https://t.me/\">Канал</a>"
+        },
+        {
+            "time": "10:00",
+            "caption": "<a href=\"https://t.me/\">Канал</a>"
+        },
+        {
+            "time": "23:00",
+            "caption": "Спокойной ночки!\n\n<a href=\"https://t.me/\">Канал</a>"
+        }
+    ]
+}
