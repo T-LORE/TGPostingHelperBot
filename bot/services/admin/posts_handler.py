@@ -140,10 +140,10 @@ async def delete_posts(posts):
         for post_response in posts_response:
             response.append(post_response)
             if post_response["status"] == 'DELETED':
-                await delete_post(post_response["post_id"])
-                logger.info(f"Post #{post_response['post_id']} deleted from queue")
+                await delete_post(post_response["id"])
+                logger.info(f"Post #{post_response['id']} deleted from queue")
             else:
-                logger.warning(f"Deleting post #{post_response['post_id']} aborted with status: {post_response['status']}")
+                logger.warning(f"Deleting post #{post_response['id']} aborted with status: {post_response['status']}")
         
     logger.debug(f"Deleting result: {response} ")
 

@@ -9,7 +9,7 @@ from telethon.tl.custom.message import Message
 from telethon.errors import FloodWaitError
 
 from bot.misc.config import env, config
-from bot.database.requests import get_not_tg_scheduled_posts, update_post_tg_id, get_not_published_posts
+from bot.database.requests import get_not_tg_scheduled_posts, update_post_tg_id, get_not_published_posts, get_tg_scheduled_posts
 from bot.misc.util import convert_timezone
 
 logger = logging.getLogger(__name__)
@@ -35,55 +35,95 @@ async def upload_posts_to_schedule():
         "posts": [],
     }
 
-    try:
-        channel_peer = await client.get_input_entity(env.channel_id)
-        scheduled_messages = await client(functions.messages.GetScheduledHistoryRequest(
-            peer=channel_peer, # PeerChanndel(id)
-            hash=0
-        ))
-        logger.debug("\n" + scheduled_messages.stringify())
-        logger.info(f"Poster: current scheduled posts: {scheduled_messages.count}")
-    except Exception as e:
-        logger.error(f"Poster: Error checking scheduled messages: {e}")
-        response["status"] = f"{str(e)}"
-        return response
-
-    spots_available = config.max_tg_buffer_size - scheduled_messages.count
-    logger.info(f"Poster: Availiable spots: {max(0, spots_available)}/{config.max_tg_buffer_size}")
-    if spots_available <= 0:
-        logger.info(f"Poster: Skip task")
-        response["status"] = "SKIP_NO_SPOTS"
-        return response
-
-    posts = await get_not_tg_scheduled_posts(limit=spots_available)
+    # try:
+    posts_to_upload, expired_posts = await get_posts_to_upload()
     
-    if not posts:
-        logger.info(f"Poster: There is no posts in queue")
-        response["status"] = "SKIP_NO_POSTS"
-        return response
-    
-    logger.info(f"Poster: get {len(posts)} from queue")
-
-    for post in posts:
-        logger.info(f"Poster: process post #{post['id']} for {post['publish_date']}")
-        if post['publish_date'] < datetime.datetime.now():
-            logger.warning(f"Poster: post #{post['id']} skipped his publish date: {post['publish_date']}!")               
+    for post in expired_posts:
             response["posts"].append({
-                "id": post['id'],
-                "tg_message_id": None,
-                "status": "EXPIRED"
-            })
-            continue
-        
-        res = await upload_posts_to_tg([post])
-        response["posts"].append(res["posts"][0])
+            "id": post['id'],
+            "tg_message_id": None,
+            "status": "EXPIRED"
+        })
+    
+    if len(posts_to_upload) <= 0:
+        logger.info(f"Poster: Skip task")
+        response["status"] = "SKIP"
+        return response
 
-    logger.info(f"Poster: Done!")
+    posts_to_remove = await get_posts_to_remove_from_schedule(posts_to_upload)
+
+    logger.info(f"Poster: posts to upload: {len(posts_to_upload)} posts to remove: {len(posts_to_remove)}")
+
+    remove_res = await delete_posts_from_tg(posts_to_remove)
+
+    response["posts"] += remove_res
+
+    not_uploaded = []
+    for post in posts_to_upload:
+        if post["tg_message_id"] is None:
+            not_uploaded.append(post)
+
+    upload_res = await upload_posts_to_tg(not_uploaded)
+
+    response["posts"] += upload_res["posts"]
+
+    logger.info(f"Poster: Done!")   
 
     response["status"] = "OK"
 
     return response
 
+    # except Exception as e:
+    #     logger.error(f"Poster: Error: {e}")
+    #     response["status"] = f"{str(e)}"
+    #     return response
+
+
+
+async def get_posts_to_upload():
+    not_published_posts = await get_not_published_posts() 
+    
+    if not_published_posts is None and len(not_published_posts) == 0:
+        logger.info(f"Poster: There is no posts in queue")
+        return []
+
+    expired_posts = []
+    slots = await calculate_under_control_slots()
+    
+    for post in not_published_posts:
+        if post["publish_date"] <= datetime.datetime.now():
+            logger.warning(f"Poster: post #{post['id']} skipped his publish date: {post['publish_date']}!")
+            expired_posts.append(post)
+            not_published_posts.remove(post)
+
+    if len(not_published_posts) <= slots:
+        return not_published_posts, expired_posts
+    else:
+        return not_published_posts[:slots], expired_posts
+    
+async def get_posts_to_remove_from_schedule(posts_to_upload):
+    current_tg_scheduled = await get_tg_scheduled_posts()
+    posts_to_remove = []
+    
+    for tg_post in current_tg_scheduled:
+        if tg_post not in posts_to_upload:
+            posts_to_remove.append(tg_post)
+    
+    return posts_to_remove
+    
+        
+async def calculate_under_control_slots():
+    current_tg_scheduled_count = await get_scheduled_messages_count()
+    my_scheduled_posts = await get_tg_scheduled_posts()
+    spots_available = config.max_tg_buffer_size - current_tg_scheduled_count
+
+    slots_under_control = max(config.max_tg_buffer_size - current_tg_scheduled_count + len(my_scheduled_posts), len(my_scheduled_posts))
+    slots_under_control = min(config.max_tg_buffer_size, slots_under_control)
+
+    logger.info(f"Poster: Availiable spots: {max(0, spots_available)}/{config.max_tg_buffer_size}, spots under control: {slots_under_control}")
+
+    return slots_under_control
+ 
 async def upload_posts_to_tg(posts: list[dict]) -> list[dict]:
     response = {
         "status": "UNKNOWN",
@@ -103,6 +143,12 @@ async def upload_posts_to_tg(posts: list[dict]) -> list[dict]:
                     "tg_message_id": None,
                     "status": "UNKNOWN"
                 }
+
+                if post["tg_message_id"] is not None:
+                    logger.info(f"Poster: post #{post['id']} already scheduled")
+                    post_response["status"] = "SCHEDULED"
+                    response["posts"].append(post_response)
+                    continue
                 
                 sent_message = await client.send_message(
                     entity=channel_peer,
@@ -121,18 +167,19 @@ async def upload_posts_to_tg(posts: list[dict]) -> list[dict]:
                 post_response["status"] = "SCHEDULED"
 
                 response["posts"].append(post_response)
+
+                await asyncio.sleep(1.5)
                 
             except FloodWaitError as e:
                 logger.error(f"Poster: Failed to schedule post #{post['id']}, flood wait: {e.seconds}")
                 post_response["status"] = f"FLOOD_WAIT_{e.seconds}"
                 response["posts"].append(post_response)
+                await asyncio.sleep(1.5)
 
             except Exception as e:
                 logger.error(f"Poster: Failed to schedule post #{post['id']}: {e}") 
                 post_response["status"] = f"{str(e)}"
                 response["posts"].append(post_response)
-
-            finally:
                 await asyncio.sleep(1.5)
     
     except Exception as e:
@@ -166,8 +213,8 @@ async def delete_posts_from_tg(posts: list) -> list[dict]:
             tg_ids_to_delete.append(tg_id)
         else:
             final_report.append({
-                "post_id": db_id,
-                "tg_id": None,
+                "id": db_id,
+                "tg_message_id": None,
                 "status": "DELETED", 
             })
 
@@ -192,8 +239,8 @@ async def delete_posts_from_tg(posts: list) -> list[dict]:
             logger.warning(f"Poster: Failed to delete scheduled post #{db_post_id} with message id #{tg_id} from TG")
 
         final_report.append({
-            "post_id": db_post_id,
-            "tg_id": tg_id,
+            "id": db_post_id,
+            "tg_message_id": tg_id,
             "status": status
         })
 
@@ -305,6 +352,7 @@ async def get_scheduled_messages_count():
             peer=channel_peer,
             hash=0
         ))
+        logger.info(f"Poster: current tg schedule count: {scheduled_messages.count}")
         return scheduled_messages.count
     except Exception as e:
         logger.error(f"Poster: Error checking scheduled messages: {e}")

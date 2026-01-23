@@ -79,11 +79,13 @@ async def get_not_tg_scheduled_posts(limit: int = 10):
             return await cursor.fetchall()
         
 async def get_tg_scheduled_posts():
+    now = datetime.datetime.now() + datetime.timedelta(minutes=5)
     async with aiosqlite.connect(db_path,
                                  detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
         db.row_factory = sqlite3.Row
         async with db.execute(
-            "SELECT * FROM queue WHERE tg_message_id IS NOT NULL"
+            "SELECT * FROM queue WHERE tg_message_id IS NOT NULL AND publish_date > ? ORDER BY publish_date ASC",
+            (now,) 
         ) as cursor:
             result = await cursor.fetchall()
             return None if result is None else result
