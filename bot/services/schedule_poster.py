@@ -32,10 +32,7 @@ async def upload_posts_to_schedule():
     logger.info("Poster: Checking for new posts to schedule...")
     response = {
         "status": "UNKNOWN",
-        "scheduled_posts": [],
-        "exception_posts": [],
-        "removed_posts": [],
-        "skipped_posts": []
+        "posts": [],
     }
 
     try:
@@ -68,50 +65,84 @@ async def upload_posts_to_schedule():
     logger.info(f"Poster: get {len(posts)} from queue")
 
     for post in posts:
-        try:
-            post_response ={
+        logger.info(f"Poster: process post #{post['id']} for {post['publish_date']}")
+        if post['publish_date'] < datetime.datetime.now():
+            logger.warning(f"Poster: post #{post['id']} skipped his publish date: {post['publish_date']}!")               
+            response["posts"].append({
                 "id": post['id'],
-                "status": "UNKNOWN"
-            }
-            logger.info(f"Poster: process post #{post['id']} for {post['publish_date']}")
-            if post['publish_date'] < datetime.datetime.now():
-                logger.warning(f"Poster: post #{post['id']} skipped his publish date: {post['publish_date']}!")               
-                post_response["status"] = "EXPIRED"
-                response["skipped_posts"].append(post_response)
-                continue
-            
-            sent_message = await client.send_message(
-                entity=channel_peer,
-                message=post['caption'],
-                schedule=convert_timezone(post['publish_date']),
-                file=get_file_path(post['file_id']),
-                parse_mode='html'
-            )
-            tg_msg_id = sent_message.id
-
-            logger.info(f"Poster: SUCCESS post #{post['id']} for {post['publish_date']} -> TG ID: {tg_msg_id}")
-            
-            await update_post_tg_id(post['id'], tg_msg_id)
-
-            post_response["status"] = "SCHEDULED"
-            response["scheduled_posts"].append(post_response)
+                "tg_message_id": None,
+                "status": "EXPIRED"
+            })
+            continue
         
-        except FloodWaitError as e:
-            logger.error(f"Poster: Failed to schedule post #{post['id']}, flood wait: {e.seconds}")
-            post_response["status"] = f"FLOOD_WAIT_{e.seconds}"
-            response["exception_posts"].append(post_response)
-
-        except Exception as e:
-            logger.error(f"Poster: Failed to schedule post #{post['id']}: {e}") 
-            post_response["status"] = f"{str(e)}"
-            response["exception_posts"].append(post_response)
-        
-        await asyncio.sleep(1) 
+        res = await upload_posts_to_tg([post])
+        response["posts"].append(res["posts"][0])
 
     logger.info(f"Poster: Done!")
 
     response["status"] = "OK"
 
+    return response
+
+async def upload_posts_to_tg(posts: list[dict]) -> list[dict]:
+    response = {
+        "status": "UNKNOWN",
+        "posts": []
+    }
+
+    try:
+        if not client.is_connected():
+            await client.connect()
+
+        channel_peer = await client.get_input_entity(env.channel_id)
+
+        for post in posts:
+            try:
+                post_response ={
+                    "id": post['id'],
+                    "tg_message_id": None,
+                    "status": "UNKNOWN"
+                }
+                
+                sent_message = await client.send_message(
+                    entity=channel_peer,
+                    message=post['caption'],
+                    schedule=convert_timezone(post['publish_date']),
+                    file=get_file_path(post['file_id']),
+                    parse_mode='html'
+                )
+
+                tg_msg_id = sent_message.id
+                await update_post_tg_id(post['id'], tg_msg_id)
+
+                logger.info(f"Poster: SUCCESS post #{post['id']} for {post['publish_date']} -> TG ID: {tg_msg_id}")
+
+                post_response["tg_message_id"] = tg_msg_id
+                post_response["status"] = "SCHEDULED"
+
+                response["posts"].append(post_response)
+                
+            except FloodWaitError as e:
+                logger.error(f"Poster: Failed to schedule post #{post['id']}, flood wait: {e.seconds}")
+                post_response["status"] = f"FLOOD_WAIT_{e.seconds}"
+                response["posts"].append(post_response)
+
+            except Exception as e:
+                logger.error(f"Poster: Failed to schedule post #{post['id']}: {e}") 
+                post_response["status"] = f"{str(e)}"
+                response["posts"].append(post_response)
+
+            finally:
+                await asyncio.sleep(1.5)
+    
+    except Exception as e:
+        logger.error(f"Poster: Global error during upload posts: {e}")
+        
+        for post in posts:
+            response["status"] = f"{str(e)}"
+        return response
+
+    response["status"] = "OK"
     return response
 
 def get_file_path(file_id: str):

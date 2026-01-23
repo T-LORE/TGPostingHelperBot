@@ -49,7 +49,7 @@ async def update_tg_schedule(callback: CallbackQuery):
     
     res = await service.update_tg_schedule()
 
-    message_text, reply_markup = await window.get_tg_scheduled_task_answer(res['status'], [*res['scheduled_posts'], *res['exception_posts'], *res['removed_posts'], *res['skipped_posts']])
+    message_text, reply_markup = await window.get_tg_scheduled_task_answer(res['status'], res['posts'])
 
     await callback.message.edit_text(text=message_text, reply_markup=reply_markup)
 
