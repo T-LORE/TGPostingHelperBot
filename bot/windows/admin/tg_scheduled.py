@@ -3,7 +3,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from bot.misc.callbacks import AdminCB, DeletePostCB
 
 async def get_tg_scheduled_task_answer(status: str, posts) -> tuple[str, InlineKeyboardMarkup]:
-    message_text= ""
+    message_text= "Нет обновлений"
     every_post_message = ""
     scheduled_count = 0
     exception_count = 0

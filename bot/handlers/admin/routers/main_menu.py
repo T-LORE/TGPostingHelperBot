@@ -46,12 +46,15 @@ async def update_main_page(callback: CallbackQuery):
 async def update_tg_schedule(callback: CallbackQuery):
     with suppress(TelegramBadRequest):
         await callback.message.edit_text("Обновление отложки...")
-    
-    res = await service.update_tg_schedule()
+    try:
+        res = await service.update_tg_schedule()
 
-    message_text, reply_markup = await window.get_tg_scheduled_task_answer(res['status'], res['posts'])
+        message_text, reply_markup = await window.get_tg_scheduled_task_answer(res['status'], res['posts'])
 
-    await callback.message.edit_text(text=message_text, reply_markup=reply_markup)
+        await callback.message.edit_text(text=message_text, reply_markup=reply_markup)
+    except Exception as e:
+        logger.error(str(e))
+        await callback.message.edit_text(text="Краш :(")
 
 @router.message(
         StateFilter(AdminPanel.main_page, None),
