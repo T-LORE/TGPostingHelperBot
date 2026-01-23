@@ -52,7 +52,7 @@ def configure_logger():
     error_file_handler.setFormatter(logging.Formatter(file_format))
 
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.NOTSET,
         handlers=[console_handler, file_handler, error_file_handler]
     )
 
