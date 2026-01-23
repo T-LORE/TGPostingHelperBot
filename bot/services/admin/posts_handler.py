@@ -123,7 +123,9 @@ async def delete_post_from_queue(post_id: int):
 
         if post is None:
             logger.warning(f"Can't find post with id {post_id}")
-            return False, "Post not found"
+            return {
+                "status": "DELETED"
+            }
 
     res = await delete_posts([post])
 
