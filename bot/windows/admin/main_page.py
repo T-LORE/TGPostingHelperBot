@@ -5,6 +5,7 @@ from babel.dates import format_date
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from bot.services.schedule_poster import resolve_id_to_info
 from bot.misc.callbacks import AdminCB
 from bot.database.requests import get_queue_count, get_not_published_posts
 from bot.misc.config import config, env
@@ -13,6 +14,11 @@ from bot.services.schedule_poster import get_scheduled_messages_count
 
 FREE_SLOTS_AMOUNT = 3
 FREE_SLOTS_DAYS_CHECK = 30
+
+_cache = {
+    "admin_link": None,
+    "channel_link": None
+}
 
 async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
     not_published_posts = await get_not_published_posts()
@@ -32,8 +38,11 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
     if len(expired_posts) > 0 or len(order_failure_posts) > 0 or db_post_in_tg_count != actual_post_in_tg_count:
         warning_message = f"🔴 ВНИМАНИЕ! 🔴\n\n{expired_message}{order_failure_message}{tg_desync_error}"
 
-    admin_message = f"👤Админ:{get_admin_poster_name()} | 📢Канал: {get_group_name()}\n"
-
+    admin_info = _cache["admin_link"] if _cache["admin_link"] is not None else await resolve_id_to_info(env.root_admin_id)
+    channel_info = _cache["channel_link"] if _cache["channel_link"] is not None else await resolve_id_to_info(env.channel_id)
+    _cache["admin_link"] = admin_info
+    _cache["channel_link"] = channel_info
+    
     current_tg_load = get_tg_current_tg_load(not_published_posts)
     progress_bar = get_progress_bar(current_tg_load, config.max_tg_buffer_size, 10)
     last_post_str = "Нет запланированных"
@@ -47,24 +56,26 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
 
     message_text = (
 f"""{warning_message}
-{admin_message}
-📡 Буфер Telegram:
-{progress_bar}
-(Заполнено {current_tg_load} из {config.max_tg_buffer_size} мест)
+👤<b>Админ-постер:</b> {admin_info['link']}
+📢<b>Канал:</b> {channel_info['link']}
 
-📊 Очередь бота:
+📡 <b>Буфер Telegram:</b>
+{progress_bar}
+<i>(Заполнено {current_tg_load} из {config.max_tg_buffer_size} мест)</i>
+
+📊 <b>Очередь бота:</b>
 📦 В базе: {len(not_published_posts)} шт.
 🗓 В отложке: {db_post_in_tg_count} шт.
-🏁 Последний пост: {last_post_str}
-(Точка отсчета автопостинга)
+🏁 <b>Последний пост:</b> {last_post_str}
+<i>(Точка отсчета автопостинга)</i>
 
-⏳ Следующий пост:
+⏳ <b>Следующий пост:</b>
 {next_post}
 
-⚠️ Ближайшие свободные места:
+⚠️ <b>Ближайшие свободные места:</b>
 {free_slots_text}
 -----------------------------
-(Жду файлы для загрузки...)
+<i>(Жду файлы для загрузки...)</i>
 """
     )
     message_text = textwrap.dedent(message_text)

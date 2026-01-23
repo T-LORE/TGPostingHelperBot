@@ -1,3 +1,4 @@
+import logging
 from contextlib import suppress
 
 from aiogram import Router, F
@@ -6,9 +7,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
-
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import LinkPreviewOptions
 
 from bot.misc.states import AdminPanel
 from bot.misc.callbacks import AdminCB, DeletePostCB
@@ -18,14 +17,15 @@ from bot.misc.util import parse_posts_from_message
 
 router = Router()
 
+logger = logging.getLogger(__name__)
+
 @router.message(
         Command("start")
         )
 async def cmd_start(message: Message, state: FSMContext):
     message_text, reply_markup = await window.get_main_menu_window()
     
-    await message.answer(message_text,
-    reply_markup=reply_markup)
+    await message.answer(message_text, reply_markup=reply_markup, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
     await state.set_state(AdminPanel.main_page)
 
@@ -36,7 +36,7 @@ async def update_main_page(callback: CallbackQuery):
     message_text, reply_markup = await window.get_main_menu_window()
         
     with suppress(TelegramBadRequest):
-        await callback.message.edit_text(message_text, reply_markup=reply_markup)
+        await callback.message.edit_text(message_text, reply_markup=reply_markup, link_preview_options=LinkPreviewOptions(is_disabled=True))
     
     await callback.answer()
 
@@ -103,10 +103,6 @@ async def delete_from_view(callback: CallbackQuery, callback_data: DeletePostCB,
     await callback.message.edit_text(text=message_text, reply_markup=reply_markup)
     
     await callback.answer("Пост удален")
-    
-    
-    
-
 
 @router.callback_query(F.data == AdminCB.RETURN_MAIN)
 @router.callback_query(F.data == AdminCB.RETURN_MAIN_EDIT)
@@ -116,12 +112,12 @@ async def return_to_main_page(callback: CallbackQuery, state: FSMContext):
 
     if callback.data == AdminCB.RETURN_MAIN_EDIT:
         with suppress(TelegramBadRequest):
-            await callback.message.edit_text(message_text, reply_markup=reply_markup)
+            await callback.message.edit_text(message_text, reply_markup=reply_markup, link_preview_options=LinkPreviewOptions(is_disabled=True))
     elif callback.data == AdminCB.RETURN_MAIN_DELETE:
         await callback.message.delete()
-        await callback.message.answer(message_text, reply_markup=reply_markup)
+        await callback.message.answer(message_text, reply_markup=reply_markup, link_preview_options=LinkPreviewOptions(is_disabled=True))
     elif callback.data == AdminCB.RETURN_MAIN:
-        await callback.message.answer(message_text, reply_markup=reply_markup)
+        await callback.message.answer(message_text, reply_markup=reply_markup, link_preview_options=LinkPreviewOptions(is_disabled=True))
         
     await state.set_state(AdminPanel.main_page)
 

@@ -7,7 +7,9 @@ from telethon import TelegramClient, utils
 from telethon.tl import types, functions
 from telethon.tl.custom.message import Message
 from telethon.errors import FloodWaitError
+from telethon.tl.types import User, Channel, Chat
 from aiogram.utils.text_decorations import html_decoration as hd
+
 
 from bot.misc.config import env, config
 from bot.database.requests import get_not_tg_scheduled_posts, update_post_tg_id, get_not_published_posts, get_tg_scheduled_posts
@@ -377,36 +379,47 @@ async def resolve_username_to_id(username: str) -> int | None:
         logger.error(f"Failed to resolve username {username}: {e}")
         return None
     
-async def resolve_id_to_info(user_id: int) -> dict | None:
+async def resolve_id_to_info(entity_id: int) -> dict:
     try:
         if not client.is_connected():
             await client.connect()
 
-        entity = await client.get_entity(user_id)
+        entity = await client.get_entity(entity_id)
         
         full_name = utils.get_display_name(entity)
-        
-        username = f"@{entity.username}" if entity.username else None
-        
         safe_name = hd.quote(full_name)
         
-        if entity.username:
-            link = f'<a href="https://t.me/{entity.username}">{safe_name}</a>'
+        username = f"@{entity.username}" if hasattr(entity, 'username') and entity.username else None
+        
+        url = ""
+        
+        if hasattr(entity, 'username') and entity.username:
+            url = f"https://t.me/{entity.username}"
+            
         else:
-            link = f'<a href="tg://user?id={user_id}">{safe_name}</a>'
+            if isinstance(entity, User):
+                url = f"tg://user?id={entity.id}"
+                
+            elif isinstance(entity, (Channel, Chat)):
+                url = f"https://t.me/c/{entity.id}/1"
+            
+            else:
+                url = "https://t.me/"
+
+        link = f'<a href="{url}">{safe_name}</a>'
 
         return {
-            "id": user_id,
-            "username": username,   
-            "full_name": full_name, 
-            "link": link            
+            "id": entity.id,
+            "username": username,
+            "full_name": full_name,
+            "link": link
         }
 
     except Exception as e:
-        logger.error(f"Failed to resolve info for ID {user_id}: {e}")
+        logger.error(f"Failed to resolve info for ID {entity_id}: {e}")
         return {
-            "id": user_id,
+            "id": entity_id,
             "username": None,
             "full_name": "Unknown",
-            "link": f"<code>{user_id}</code>"
+            "link": f"<code>{entity_id}</code>"
         }
