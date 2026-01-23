@@ -32,13 +32,14 @@ async def start_db():
         
         await db.execute("""
             CREATE TABLE IF NOT EXISTS admins (
-                user_id INTEGER PRIMARY KEY
+                user_id INTEGER PRIMARY KEY,
+                role TEXT DEFAULT 'admin'
             )
         """)
         
         await db.execute(
-            "INSERT OR IGNORE INTO admins (user_id) VALUES (?);",
-            (root_admin_id,)
+            "INSERT OR IGNORE INTO admins (user_id, role) VALUES (?, ?)",
+            (root_admin_id, "root")
         )
 
         await db.commit()

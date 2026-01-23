@@ -3,10 +3,11 @@ import asyncio
 import datetime
 import os
 
-from telethon import TelegramClient
+from telethon import TelegramClient, utils
 from telethon.tl import types, functions
 from telethon.tl.custom.message import Message
 from telethon.errors import FloodWaitError
+from aiogram.utils.text_decorations import html_decoration as hd
 
 from bot.misc.config import env, config
 from bot.database.requests import get_not_tg_scheduled_posts, update_post_tg_id, get_not_published_posts, get_tg_scheduled_posts
@@ -357,3 +358,55 @@ async def get_scheduled_messages_count():
     except Exception as e:
         logger.error(f"Poster: Error checking scheduled messages: {e}")
         return -1
+    
+async def resolve_username_to_id(username: str) -> int | None:
+    if not username:
+        return None
+    
+    username = username.strip().lstrip("@")
+
+    try:
+        if not client.is_connected():
+            await client.connect()
+            
+        entity = await client.get_entity(username)
+        
+        return entity.id
+        
+    except Exception as e:
+        logger.error(f"Failed to resolve username {username}: {e}")
+        return None
+    
+async def resolve_id_to_info(user_id: int) -> dict | None:
+    try:
+        if not client.is_connected():
+            await client.connect()
+
+        entity = await client.get_entity(user_id)
+        
+        full_name = utils.get_display_name(entity)
+        
+        username = f"@{entity.username}" if entity.username else None
+        
+        safe_name = hd.quote(full_name)
+        
+        if entity.username:
+            link = f'<a href="https://t.me/{entity.username}">{safe_name}</a>'
+        else:
+            link = f'<a href="tg://user?id={user_id}">{safe_name}</a>'
+
+        return {
+            "id": user_id,
+            "username": username,   
+            "full_name": full_name, 
+            "link": link            
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to resolve info for ID {user_id}: {e}")
+        return {
+            "id": user_id,
+            "username": None,
+            "full_name": "Unknown",
+            "link": f"<code>{user_id}</code>"
+        }

@@ -113,3 +113,32 @@ async def get_post_by_day(day: datetime):
             (start_of_day, end_of_day)
         ) as cursor:
             return await cursor.fetchall()
+        
+async def add_admin_to_db(user_id: int, role: str) -> bool:
+    async with aiosqlite.connect(db_path,
+                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        async with db.execute("SELECT 1 FROM admins WHERE user_id = ?", (user_id,)) as cursor:
+            if await cursor.fetchone():
+                return False
+        
+        await db.execute("INSERT INTO admins (user_id, role) VALUES (?, ?)", (user_id, role))
+        await db.commit()
+        return True
+
+async def remove_admin_from_db(user_id: int) -> bool:
+    async with aiosqlite.connect(db_path,
+                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        async with db.execute("SELECT 1 FROM admins WHERE user_id = ?", (user_id,)) as cursor:
+            if not await cursor.fetchone():
+                return False
+                
+        await db.execute("DELETE FROM admins WHERE user_id = ?", (user_id,))
+        await db.commit()
+        return True
+    
+async def get_all_admins() -> list[int]:
+    async with aiosqlite.connect(db_path,
+                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as db:
+        async with db.execute("SELECT user_id FROM admins") as cursor:
+            rows = await cursor.fetchall()
+            return [row[0] for row in rows]
