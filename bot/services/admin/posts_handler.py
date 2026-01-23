@@ -105,7 +105,7 @@ async def delete_all_posts_from_queue():
     logger.info("Deleting all posts from queue...")
     
     async with processing_lock: 
-        posts = await get_tg_scheduled_posts()
+        posts = await get_not_published_posts()
 
         if posts is None or len(posts) == 0:
             logger.info("Nothing to delete")
