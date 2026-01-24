@@ -265,18 +265,18 @@ def determine_post_status(target_date: datetime, post = None):
 
 def create_table_row(time: datetime, post_id: int, status: str):
     STATUS_MAP = {
-    "expired":   {"icon": "💔", "text": "Просрочено"},
-    "tg_hold":   {"icon": "✈️", "text": "в отложке"},
-    "posted":    {"icon": "✅", "text": "опубликован"},
-    "db_hold":   {"icon": "📦", "text": "создан"},
+    "expired":   {"icon": "💔", "text": "Просрочен"},
+    "tg_hold":   {"icon": "✈️", "text": "В отложке"},
+    "posted":    {"icon": "✅", "text": "Выложен"},
+    "db_hold":   {"icon": "📦", "text": "Создан"},
     "free":      {"icon": "❌", "text": "Свободно"},
-    "missed":    {"icon": "⚪️", "text": "пусто"},
+    "missed":    {"icon": "⚪️", "text": "Пусто"},
     }
     
     if post_id is None:
-        post_id = normalize_str("----", 6)
+        post_id = normalize_str("----", 4)
     else:
-        post_id = normalize_str(f"#{str(post_id)}", 6)
+        post_id = normalize_str(f"#{str(post_id)}", 4)
 
     status_data = STATUS_MAP[status] if status in STATUS_MAP else {"icon": "❓", "text": "Неизвестно"}
     
