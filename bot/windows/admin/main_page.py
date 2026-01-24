@@ -34,7 +34,7 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
     db_post_in_tg_count = len(db_post_in_tg)
     tg_desync_error = f"⚠️ Возможная ошибка - кол-во постов в отложке телеграмма не совпадает с информацией очереди: {actual_post_in_tg_count}/{db_post_in_tg_count}\n" if db_post_in_tg_count != actual_post_in_tg_count else ""
 
-    warning_message = "🟢 ГЛАВНАЯ СТРАНИЦА\n"
+    warning_message = ""
     if len(expired_posts) > 0 or len(order_failure_posts) > 0 or db_post_in_tg_count != actual_post_in_tg_count:
         warning_message = f"🔴 ВНИМАНИЕ! 🔴\n\n{expired_message}{order_failure_message}{tg_desync_error}"
 
@@ -42,7 +42,7 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
     channel_info = _cache["channel_link"] if _cache["channel_link"] is not None else await resolve_id_to_info(env.channel_id)
     _cache["admin_link"] = admin_info
     _cache["channel_link"] = channel_info
-    
+
     current_tg_load = get_tg_current_tg_load(not_published_posts)
     progress_bar = get_progress_bar(current_tg_load, config.max_tg_buffer_size, 10)
     last_post_str = "Нет запланированных"
@@ -55,25 +55,29 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
     free_slots_text = await get_next_free_slots_text(FREE_SLOTS_AMOUNT)
 
     message_text = (
-f"""{warning_message}
-👤<b>Админ-постер:</b> {admin_info['link']}
-📢<b>Канал:</b> {channel_info['link']}
-
-📡 <b>Буфер Telegram:</b>
-{progress_bar}
-<i>(Заполнено {current_tg_load} из {config.max_tg_buffer_size} мест)</i>
+f"""📡 <b>Панель управления</b>
+👤 <b>Админ-постер:</b> 
+{admin_info['link']}
+📢 <b>Канал:</b> 
+{channel_info['link']}
 
 📊 <b>Очередь бота:</b>
 📦 В базе: {len(not_published_posts)} шт.
 🗓 В отложке: {db_post_in_tg_count} шт.
-🏁 <b>Последний пост:</b> {last_post_str}
+
+🏁 <b>Последний пост:</b> 
+{last_post_str}
 <i>(Точка отсчета автопостинга)</i>
 
 ⏳ <b>Следующий пост:</b>
 {next_post}
 
+📡 <b>Буфер Telegram:</b>
+{progress_bar}
+<i>(Заполнено {current_tg_load} из {config.max_tg_buffer_size} мест)</i>
+
 ⚠️ <b>Ближайшие свободные места:</b>
-{free_slots_text}
+{free_slots_text} {warning_message}
 -----------------------------
 <i>(Жду файлы для загрузки...)</i>
 """
@@ -166,7 +170,7 @@ def get_next_post_date_text(not_published_posts):
     
     timer_str = get_time_until_str(dt)
 
-    return f"{post_text} {timer_str}"
+    return f"{post_text}\n<i>{timer_str}</i>"
 
 def get_post_date_text(dt):
     day_str = get_human_date_str(dt)
