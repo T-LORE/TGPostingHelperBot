@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 from aiogram.types import LinkPreviewOptions
+from aiogram.utils.keyboard import InlineKeyboardButton, InlineKeyboardBuilder
 
 from bot.misc.states import AdminPanel
 from bot.misc.callbacks import AdminCB, DeletePostCB
@@ -54,7 +55,10 @@ async def update_tg_schedule(callback: CallbackQuery):
         await callback.message.edit_text(text=message_text, reply_markup=reply_markup)
     except Exception as e:
         logger.error(str(e))
-        await callback.message.edit_text(text="Краш :(")
+        builder = InlineKeyboardBuilder()
+        main_menu_btn = InlineKeyboardButton(text="Показать главную страницу", callback_data=AdminCB.RETURN_MAIN_EDIT)
+        builder.add(main_menu_btn)
+        await callback.message.edit_text(text=f"<b>Обновление завершилось с ошибкой:</b>\n {str(e)[:3500]}", reply_markup=builder.as_markup())
 
 @router.message(
         StateFilter(AdminPanel.main_page, None),
