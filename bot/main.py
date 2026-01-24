@@ -34,9 +34,9 @@ async def start_bot():
 
     await start_telethon()
 
-    # scheduler = AsyncIOScheduler()
-    # scheduler.add_job(upload_posts_to_schedule, "interval", minutes=5)
-    # scheduler.start()
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(upload_posts_to_schedule, "interval", minutes=30)
+    scheduler.start()
     
     await upload_posts_to_schedule()
     
