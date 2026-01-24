@@ -4,6 +4,7 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import LinkPreviewOptions
 
 from bot.misc.states import AdminPanel
 from bot.misc.callbacks import AdminCB
@@ -35,7 +36,7 @@ async def delete_all_posts(callback: CallbackQuery, state: FSMContext):
     message_text, reply_markup = await window.get_main_menu_window()
     
     with suppress(TelegramBadRequest):
-        await callback.message.edit_text(message_text, reply_markup=reply_markup)
+        await callback.message.edit_text(message_text, reply_markup=reply_markup, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
     await state.set_state(AdminPanel.main_page)
 
