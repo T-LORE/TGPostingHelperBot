@@ -90,6 +90,7 @@ f"""📡 <b>Панель управления</b>
         InlineKeyboardButton(text="Удалить всё", callback_data=AdminCB.DELETE_ALL_CONFIRM)
         )
     builder.row(InlineKeyboardButton(text="Просмотр постов", callback_data=AdminCB.POST_QUEUE))
+    builder.row(InlineKeyboardButton(text="Настройки", callback_data=AdminCB.EDIT_CONGFIG_MENU))
     builder.row(InlineKeyboardButton(text="Обновить отложку телеграмма", callback_data=AdminCB.UPDATE_TG_SCHEDULE))
 
     

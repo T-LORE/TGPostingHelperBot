@@ -5,3 +5,4 @@ from .delete_all_posts_confirmation import get_delete_all_posts_confirmation
 from .post_queue import get_post_queue_window, get_post_queue_window_start
 from .post_view import get_post_view_window
 from .tg_scheduled import get_tg_scheduled_task_answer
+from .config_editor import get_config_main_window, get_slot_edit_window, get_cancel_edit_keyboard

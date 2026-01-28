@@ -2,7 +2,7 @@ from aiogram import Router
 from bot.filters.admin import IsAdmin
 from bot.middlewares.album import AlbumMiddleware
 
-from .routers import main_menu, queue_list, delete_all, unknown, add_post_for_date, admin_management
+from .routers import main_menu, queue_list, delete_all, unknown, add_post_for_date, admin_management, config_editor
 
 admin_router = Router()
 
@@ -14,7 +14,8 @@ admin_router.include_routers(
     admin_management.router,
     main_menu.router,   
     queue_list.router,
-    add_post_for_date.router,  
+    add_post_for_date.router,
+    config_editor.router,  
     delete_all.router,  
     unknown.router 
 )

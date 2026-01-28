@@ -9,6 +9,10 @@ class AdminCB:
     
     CLOSE_POST = "close_post"
 
+    EDIT_CONGFIG_MENU = "edit_config_menu"
+    CANCEL_EDIT_SLOT = "cancel_edit_slot"
+    ADD_CONFIG_SLOT = "cfg_add_slot"
+
     RETURN_MAIN = "return_to_main_page"
     RETURN_MAIN_EDIT = "return_to_main_page_with_edit"
     RETURN_MAIN_DELETE = "return_to_main_page_with_delete"
@@ -37,3 +41,7 @@ class AddPostCB(CallbackData, prefix="addpost"):
     year: int
     hour: int
     minute: int
+
+class ConfigSlotCB(CallbackData, prefix="cfg_slot"):
+    action: str
+    index: int
