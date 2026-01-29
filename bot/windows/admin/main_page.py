@@ -36,7 +36,7 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
 
     warning_message = ""
     if len(expired_posts) > 0 or len(order_failure_posts) > 0 or db_post_in_tg_count != actual_post_in_tg_count:
-        warning_message = f"🔴 ВНИМАНИЕ! 🔴\n\n{expired_message}{order_failure_message}{tg_desync_error}"
+        warning_message = f"🔴 ВНИМАНИЕ! 🔴\n{expired_message}{order_failure_message}{tg_desync_error}"
 
     admin_info = _cache["admin_link"] if _cache["admin_link"] is not None else await resolve_id_to_info(env.root_admin_id)
     channel_info = _cache["channel_link"] if _cache["channel_link"] is not None else await resolve_id_to_info(env.channel_id)
@@ -77,7 +77,8 @@ f"""📡 <b>Панель управления</b>
 <i>(Заполнено {current_tg_load} из {config.max_tg_buffer_size} мест)</i>
 
 ⚠️ <b>Ближайшие свободные места:</b>
-{free_slots_text} {warning_message}
+{free_slots_text}
+{warning_message}
 -----------------------------
 <i>(Жду файлы для загрузки...)</i>
 """
