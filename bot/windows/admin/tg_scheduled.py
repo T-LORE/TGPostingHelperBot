@@ -33,8 +33,13 @@ async def get_tg_scheduled_task_answer(status: str, posts) -> tuple[str, InlineK
         message_text = (f"Задача пропущена, потому что нет свободных слотов!\n\n")
     elif status == "SKIP_NO_POSTS":
         message_text = (f"Задача пропущена, потому что нет постов в очереди!\n\n")
+    elif status == "SKIP_BUSY":
+        message_text = (f"⚠️Обновление уже выполняется!⚠️")
     elif status == "OK":
         message_text = (f"Добавлено {scheduled_count} постов в очередь. Пропущено {skipped_count} постов. Удалено {removed_count} постов. Постов с ошибками: {exception_count}\n\n")
+        message_text += every_post_message
+    else:
+        message_text = (f"❌Неизвестная ошибка: {status}\n\n")
         message_text += every_post_message
 
     builder = InlineKeyboardBuilder()

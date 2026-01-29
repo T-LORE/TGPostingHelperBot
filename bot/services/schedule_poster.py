@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 client = TelegramClient(env.session_name, env.api_id, env.api_hash)
 
+upload_lock = asyncio.Lock()
+
 async def start_telethon():
     await client.start()
     logger.info("Telethon Client started successfully.")
@@ -27,59 +29,67 @@ async def stop_telethon():
     await client.disconnect()
 
 async def upload_posts_to_schedule():
-    logger.info("Poster: Clearing media folder...")
-    removed_files = await clear_media_folder()
-
-    logger.info(f"Poster: Removed {len(removed_files)} files")
-
-    logger.info("Poster: Checking for new posts to schedule...")
-    response = {
-        "status": "UNKNOWN",
-        "posts": [],
-    }
-
-    # try:
-    posts_to_upload, expired_posts = await get_posts_to_upload()
+    if upload_lock.locked():
+        logger.warning("Poster: Upload already in progress. Skipping this run.")
+        return {
+            "status": "SKIP_BUSY",
+            "posts": []
+        }
     
-    for post in expired_posts:
-            response["posts"].append({
-            "id": post['id'],
-            "tg_message_id": None,
-            "status": "EXPIRED"
-        })
-    
-    if len(posts_to_upload) <= 0:
-        logger.info(f"Poster: Skip task")
-        response["status"] = "SKIP"
-        return response
+    async with upload_lock:
+        logger.info("Poster: Clearing media folder...")
+        removed_files = await clear_media_folder()
 
-    posts_to_remove = await get_posts_to_remove_from_schedule(posts_to_upload)
+        logger.info(f"Poster: Removed {len(removed_files)} files")
 
-    logger.info(f"Poster: posts to upload: {len(posts_to_upload)} posts to remove: {len(posts_to_remove)}")
+        logger.info("Poster: Checking for new posts to schedule...")
+        response = {
+            "status": "UNKNOWN",
+            "posts": [],
+        }
 
-    remove_res = await delete_posts_from_tg(posts_to_remove)
+        try:
+            posts_to_upload, expired_posts = await get_posts_to_upload()
+            
+            for post in expired_posts:
+                    response["posts"].append({
+                    "id": post['id'],
+                    "tg_message_id": None,
+                    "status": "EXPIRED"
+                })
+            
+            if len(posts_to_upload) <= 0:
+                logger.info(f"Poster: Skip task")
+                response["status"] = "SKIP"
+                return response
 
-    response["posts"] += remove_res
+            posts_to_remove = await get_posts_to_remove_from_schedule(posts_to_upload)
 
-    not_uploaded = []
-    for post in posts_to_upload:
-        if post["tg_message_id"] is None:
-            not_uploaded.append(post)
+            logger.info(f"Poster: posts to upload: {len(posts_to_upload)} posts to remove: {len(posts_to_remove)}")
 
-    upload_res = await upload_posts_to_tg(not_uploaded)
+            remove_res = await delete_posts_from_tg(posts_to_remove)
 
-    response["posts"] += upload_res["posts"]
+            response["posts"] += remove_res
 
-    logger.info(f"Poster: Done!")   
+            not_uploaded = []
+            for post in posts_to_upload:
+                if post["tg_message_id"] is None:
+                    not_uploaded.append(post)
 
-    response["status"] = "OK"
+            upload_res = await upload_posts_to_tg(not_uploaded)
 
-    return response
+            response["posts"] += upload_res["posts"]
 
-    # except Exception as e:
-    #     logger.error(f"Poster: Error: {e}")
-    #     response["status"] = f"{str(e)}"
-    #     return response
+            logger.info(f"Poster: Done!")   
+
+            response["status"] = "OK"
+
+            return response
+
+        except Exception as e:
+            logger.error(f"Poster: Error: {e}")
+            response["status"] = f"{str(e)}"
+            return response
 
 
 
