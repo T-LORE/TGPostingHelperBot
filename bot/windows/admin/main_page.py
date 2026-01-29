@@ -85,14 +85,18 @@ f"""📡 <b>Панель управления</b>
     message_text = textwrap.dedent(message_text)
 
     builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(text="🔄 Обновить", callback_data=AdminCB.UPDATE),
-        InlineKeyboardButton(text="Удалить всё", callback_data=AdminCB.DELETE_ALL_CONFIRM)
-        )
-    builder.row(InlineKeyboardButton(text="Просмотр постов", callback_data=AdminCB.POST_QUEUE))
-    builder.row(InlineKeyboardButton(text="Настройки", callback_data=AdminCB.EDIT_CONGFIG_MENU))
-    builder.row(InlineKeyboardButton(text="Обновить отложку телеграмма", callback_data=AdminCB.UPDATE_TG_SCHEDULE))
+   
+    update_menu_btn = InlineKeyboardButton(text="🔄 Обновить страницу", callback_data=AdminCB.UPDATE)
+    delete_all_btn = InlineKeyboardButton(text="🗑 Удалить всё ", callback_data=AdminCB.DELETE_ALL_CONFIRM)
 
+    watch_queue_btn = InlineKeyboardButton(text="📅 Календарь постов", callback_data=AdminCB.POST_QUEUE)
+    settings_btn = InlineKeyboardButton(text="⚙️ Настройки", callback_data=AdminCB.EDIT_CONGFIG_MENU)
+    update_tg_btn = InlineKeyboardButton(text="📤 Залить в Telegram", callback_data=AdminCB.UPDATE_TG_SCHEDULE)
+
+    builder.row(watch_queue_btn)
+    builder.row(update_tg_btn)
+    builder.row(settings_btn, update_menu_btn)
+    builder.row(delete_all_btn)
     
     return message_text, builder.as_markup()
 
