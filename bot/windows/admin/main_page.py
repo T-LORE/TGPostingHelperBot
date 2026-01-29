@@ -55,12 +55,12 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
     free_slots_text = await get_next_free_slots_text(FREE_SLOTS_AMOUNT)
 
     message_text = (
-f"""📡 <b>Панель управления</b>
+f"""📡 <b>ПАНЕЛЬ УПРАВЛЕНИЯ</b>
 👤 <b>Админ-постер:</b> 
 {admin_info['link']}
 📢 <b>Канал:</b> 
 {channel_info['link']}
-
+➖➖➖➖➖➖➖➖➖➖
 📊 <b>Очередь бота:</b>
 📦 В базе: {len(not_published_posts)} шт.
 🗓 В отложке: {db_post_in_tg_count} шт.
@@ -79,7 +79,7 @@ f"""📡 <b>Панель управления</b>
 ⚠️ <b>Ближайшие свободные места:</b>
 {free_slots_text}
 {warning_message} {tg_desync_warning}
------------------------------
+➖➖➖➖➖➖➖➖➖➖
 <i>(Жду файлы для загрузки...)</i>
 """
     )
