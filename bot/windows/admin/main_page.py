@@ -32,11 +32,11 @@ async def get_main_menu_window() -> tuple[str, InlineKeyboardMarkup]:
     actual_post_in_tg_count = await get_scheduled_messages_count()
     db_post_in_tg = get_posts_in_tg_schedule(not_published_posts)
     db_post_in_tg_count = len(db_post_in_tg)
-    tg_desync_error = f"⚠️ Возможная ошибка - кол-во постов в отложке телеграмма не совпадает с информацией очереди: {actual_post_in_tg_count}/{db_post_in_tg_count}\n" if db_post_in_tg_count != actual_post_in_tg_count else ""
+    tg_desync_warning = f"⚠️ Возможная ошибка - кол-во постов в отложке телеграмма не совпадает с информацией очереди: {actual_post_in_tg_count}/{db_post_in_tg_count}\n" if db_post_in_tg_count != actual_post_in_tg_count else ""
 
     warning_message = ""
-    if len(expired_posts) > 0 or len(order_failure_posts) > 0 or db_post_in_tg_count != actual_post_in_tg_count:
-        warning_message = f"🔴 ВНИМАНИЕ! 🔴\n{expired_message}{order_failure_message}{tg_desync_error}"
+    if len(expired_posts) > 0 or len(order_failure_posts) > 0:
+        warning_message = f"⛔️ ВНИМАНИЕ! ⛔️\n{expired_message}{order_failure_message}"
 
     admin_info = _cache["admin_link"] if _cache["admin_link"] is not None else await resolve_id_to_info(env.root_admin_id)
     channel_info = _cache["channel_link"] if _cache["channel_link"] is not None else await resolve_id_to_info(env.channel_id)
@@ -78,7 +78,7 @@ f"""📡 <b>Панель управления</b>
 
 ⚠️ <b>Ближайшие свободные места:</b>
 {free_slots_text}
-{warning_message}
+{warning_message} {tg_desync_warning}
 -----------------------------
 <i>(Жду файлы для загрузки...)</i>
 """
