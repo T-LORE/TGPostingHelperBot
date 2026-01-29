@@ -47,5 +47,6 @@ async def get_tg_scheduled_task_answer(status: str, posts) -> tuple[str, InlineK
 
     builder.row(main_menu_btn)
 
-    
+    message_text = message_text[:4096 - 3] + "..." if len(message_text) > 4096 else message_text
+
     return message_text, builder.as_markup()
