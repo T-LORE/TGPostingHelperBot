@@ -288,7 +288,7 @@ def create_table_row(time: datetime, post_id: int, status: str):
 def create_post_button(status, post_id : int = None, publish_date : datetime = None):
     if status == "expired":
         return [InlineKeyboardButton(
-            text=f"🗑", 
+            text=f"🗑 Удалить", 
             callback_data=DeletePostCB(
                 id=post_id, 
                 source="list", 
@@ -308,12 +308,12 @@ def create_post_button(status, post_id : int = None, publish_date : datetime = N
     elif status == "tg_hold" or status == "db_hold":
         return [
             InlineKeyboardButton(
-                text=f"{publish_date.strftime('%H:%M')}: 🔎", 
+                text=f"{publish_date.strftime('%H:%M')}: 🔎 Показать", 
                 callback_data=ViewPostCB(
                     id=post_id, 
                     page=-1).pack()),
             InlineKeyboardButton(
-                text=f"🗑", 
+                text=f"🗑 Удалить", 
                 callback_data=DeletePostCB(
                     id=post_id,
                     page=-1,
@@ -323,7 +323,7 @@ def create_post_button(status, post_id : int = None, publish_date : datetime = N
     elif status == "posted":
         return [
             InlineKeyboardButton(
-                text=f"{publish_date.strftime('%H:%M')}: 🔎", 
+                text=f"{publish_date.strftime('%H:%M')}: 🔎 Показать", 
                 callback_data=ViewPostCB(
                     id=post_id, 
                     page=-1).pack())]
